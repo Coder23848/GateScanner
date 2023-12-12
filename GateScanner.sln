@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{48F17CFB-D4AF-4EAA-9C4E-6EB3A4081D8A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GateScanner", "src\plugin\GateScanner.csproj", "{C55B8C40-606C-49B0-A96A-CA5D91037915}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "mod", "mod", "{3BE14D79-AA79-4156-8011-0EF163B743B9}"
+	ProjectSection(SolutionItems) = preProject
+		mod\modinfo.json = mod\modinfo.json
+		mod\thumbnail.png = mod\thumbnail.png
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{10005BBE-73ED-4F63-A07C-01866B5E9946}"
+	ProjectSection(SolutionItems) = preProject
+		gatescannergatesprites.xcf = gatescannergatesprites.xcf
+		README.md = README.md
+		thumbnail.xcf = thumbnail.xcf
+		thumbnail_background.png = thumbnail_background.png
+		thumbnail_black.png = thumbnail_black.png
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "assets", "assets", "{9C7AE888-6610-41DF-887F-C0878556C6B1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "gatescanner", "gatescanner", "{B0D1C8A6-1370-461C-8C89-6D7D1C41FD2E}"
+	ProjectSection(SolutionItems) = preProject
+		mod\assets\gatescanner\gatescannergatesprites.png = mod\assets\gatescanner\gatescannergatesprites.png
+		mod\assets\gatescanner\gatescannergatesprites.txt = mod\assets\gatescanner\gatescannergatesprites.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C55B8C40-606C-49B0-A96A-CA5D91037915}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C55B8C40-606C-49B0-A96A-CA5D91037915}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C55B8C40-606C-49B0-A96A-CA5D91037915}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C55B8C40-606C-49B0-A96A-CA5D91037915}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C55B8C40-606C-49B0-A96A-CA5D91037915} = {48F17CFB-D4AF-4EAA-9C4E-6EB3A4081D8A}
+		{9C7AE888-6610-41DF-887F-C0878556C6B1} = {3BE14D79-AA79-4156-8011-0EF163B743B9}
+		{B0D1C8A6-1370-461C-8C89-6D7D1C41FD2E} = {9C7AE888-6610-41DF-887F-C0878556C6B1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4A5FC9D9-E620-4E00-BBCE-5B92D66C78A9}
+	EndGlobalSection
+EndGlobal
