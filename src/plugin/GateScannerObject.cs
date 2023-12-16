@@ -334,7 +334,7 @@ namespace GateScanner
             }
             else if (ModManager.MSC && session.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Spear)
             {
-                return PluginOptions.UnlockScannerCheat.Value || session.saveState.miscWorldSaveData.EverMetMoon;
+                return PluginOptions.UnlockScannerCheat.Value || session.saveState.miscWorldSaveData.SLOracleState.playerEncounters > 0 || session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0; // Expedition Mode sets playerEncountersWithMark only, the first visit to Looks to the Moon sets playerEncounters only.
             }
             else if (ModManager.MSC && session.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Artificer)
             {
