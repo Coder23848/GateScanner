@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Linq;
+using System.Runtime.CompilerServices;
 using BepInEx;
 using MoreSlugcats;
 using UnityEngine;
@@ -28,7 +29,9 @@ namespace GateScanner
             On.SLOracleBehaviorHasMark.MoonConversation.MiscPearl += MoonConversation_MiscPearl;
         }
 
-        // TODO: translation support?
+        // TODO: Pearlcat Five Pebbles does the wrong conversation, test all other slugcats and disabling Pearlcat, translation support?
+
+        public static bool PearlcatEnabled { get; set; }
 
         const int PROGRESS_BAR_TICK_TIME = 25;
         /// <summary>
@@ -128,6 +131,7 @@ namespace GateScanner
 
             thisData.LastFadeMultipler = thisData.FadeMultiplier;
             thisData.LastIteratorColorIntensity = thisData.IteratorColorIntensity;
+            thisData.LastIteratorColor = thisData.IteratorColor;
             thisData.LastErrorColorIntensity = thisData.ErrorColorIntensity;
 
             // Handle the fade-out animation needed to switch sprites
@@ -180,6 +184,13 @@ namespace GateScanner
                     thisData.IteratorColorIntensity = 0;
                 }
             }
+
+            // Update the iterator color (in case of pearlcat), but only if it isn't being displayed. This feels like it could be optimized to not update almost every frame, but I'm not going to overthink it.
+            if (thisScanner.RespondingIteratorForThisScan != null && thisData.IteratorColorIntensity == 0 && thisData.LastIteratorColorIntensity == 0)
+            {
+                thisData.IteratorColor = thisScanner.IteratorColor();
+            }
+
             // Fade to red when an error appears
             if (thisScanner.ErrorTimer > 0)
             {
@@ -293,7 +304,7 @@ namespace GateScanner
             Color spriteColor = Color.Lerp(
                 Color.Lerp(
                     self.myDefaultColor, 
-                    thisScanner.IteratorColor(),
+                    Color.Lerp(thisData.LastIteratorColor, thisData.IteratorColor, timeStacker),
                     Mathf.Lerp(thisData.LastIteratorColorIntensity, thisData.IteratorColorIntensity, timeStacker)),
                 new Color(1f, 0f, 0f),
                 Mathf.Lerp(thisData.LastErrorColorIntensity, thisData.ErrorColorIntensity, timeStacker)
@@ -674,6 +685,12 @@ namespace GateScanner
             {
                 Debug.Log("Error loading Gate Scanner assets!");
                 throw e;
+            }
+
+            PearlcatEnabled = ModManager.ActiveMods.Any(x => x.id == "pearlcat");
+            if (PearlcatEnabled)
+            {
+                Debug.Log("Gate Scanner detected Pearlcat!");
             }
         }
     }

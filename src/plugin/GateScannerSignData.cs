@@ -35,6 +35,14 @@ namespace GateScanner
         /// </summary>
         public float LastIteratorColorIntensity { get; set; }
         /// <summary>
+        /// The color the sign uses when an iterator is talking. Should match the ID color of the iterator.
+        /// </summary>
+        public Color IteratorColor { get; set; }
+        /// <summary>
+        /// The value of <see cref="IteratorColor"/> in the previous frame.
+        /// </summary>
+        public Color LastIteratorColor { get; set; }
+        /// <summary>
         /// When 1, the sign is red. Used in error messages.
         /// </summary>
         public float ErrorColorIntensity { get; set; }

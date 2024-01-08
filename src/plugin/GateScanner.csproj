@@ -28,6 +28,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="Pearlcat">
+      <HintPath>..\..\dependencies\Pearlcat.dll</HintPath>
+    </Reference>
     <Reference Include="PUBLIC-Assembly-CSharp">
 	    <HintPath>..\..\..\game\BepInEx\utils\PUBLIC-Assembly-CSharp.dll</HintPath>
 	    <Private>false</Private>
