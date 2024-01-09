@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Linq;
+using System.Runtime.CompilerServices;
 using BepInEx;
 using MoreSlugcats;
 using UnityEngine;
@@ -28,8 +29,15 @@ namespace GateScanner
             On.SLOracleBehaviorHasMark.MoonConversation.MiscPearl += MoonConversation_MiscPearl;
         }
 
-        // TODO: translation support?
+        // TODO: Pearlcat Five Pebbles support, translation support?
 
+        /// <summary>
+        /// Whether or not the Pearlcat mod is active.
+        /// </summary>
+        public static bool PearlcatEnabled { get; set; }
+        /// <summary>
+        /// The speed at which the "progress bar" moves in the scanning animation.
+        /// </summary>
         const int PROGRESS_BAR_TICK_TIME = 25;
         /// <summary>
         /// The speed of the scrolling animation, in ticks per frame.
@@ -674,6 +682,12 @@ namespace GateScanner
             {
                 Debug.Log("Error loading Gate Scanner assets!");
                 throw e;
+            }
+
+            PearlcatEnabled = ModManager.ActiveMods.Any(x => x.id == "pearlcat");
+            if (PearlcatEnabled)
+            {
+                Debug.Log("Gate Scanner detected Pearlcat!");
             }
         }
     }

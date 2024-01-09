@@ -153,7 +153,7 @@ namespace GateScanner
             return ret;
         }
 
-        T GetUninit<T>()
+        public T GetUninit<T>()
         {
             return (T) System.Runtime.Serialization.FormatterServices.GetSafeUninitializedObject(typeof(T)); // This creates an object without calling its constructor.
         }
@@ -316,6 +316,25 @@ namespace GateScanner
             }
         }
 
+        public bool PearlcatCanAccessLooksToTheMoon(StoryGameSession session)
+        {
+            return LooksToTheMoonAvailable(session);
+        }
+        public bool PearlcatCanAccessFivePebbles(StoryGameSession session)
+        {
+            return PluginOptions.UnlockScannerCheat.Value || session.saveState.miscWorldSaveData.SSaiConversationsHad > 0;
+        }
+        /// <summary>
+        /// Determines hether or not (post-collapse) Looks to the Moon is available for pearl-reading in the current session.
+        /// </summary>
+        /// <param name="session">The session to check.</param>
+        /// <returns>Whether or not (post-collapse) Looks to the Moon is available for pearl-reading in the current session. Returns <see cref="false"/> if Looks to the Moon is dead, ascended, unaware of the player, or unwilling to respond.</returns>
+        public bool LooksToTheMoonAvailable(StoryGameSession session)
+        {
+            return !session.saveState.deathPersistentSaveData.ripMoon &&
+                   session.saveState.miscWorldSaveData.SLOracleState.neuronsLeft > 0 &&
+                   (PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0 && session.saveState.miscWorldSaveData.SLOracleState.SpeakingTerms));
+        }
         /// <summary>
         /// Determines whether or not an iterator will respond when a pearl is scanned.
         /// </summary>
@@ -340,14 +359,44 @@ namespace GateScanner
             {
                 return PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SSaiConversationsHad > 0 && session.saveState.hasRobo);
             }
+            else if (Plugin.PearlcatEnabled && session.saveStateNumber == Pearlcat.Enums.Pearlcat)
+            {
+                return PearlcatCanAccessLooksToTheMoon(session); // || PearlcatCanAccessFivePebbles(session);
+            }
             else
             {
-                return !session.saveState.deathPersistentSaveData.ripMoon && session.saveState.miscWorldSaveData.SLOracleState.neuronsLeft > 0 && (PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0 && session.saveState.miscWorldSaveData.SLOracleState.SpeakingTerms));
+                return LooksToTheMoonAvailable(session);
             }
         }
         public bool PlayerInRoom()
         {
             return Gate.room.game.Players.Any(x => x.pos.room == Gate.room.abstractRoom.index && x.state.alive);
+        }
+
+        /// <summary>
+        /// Checks whether or not a pearl is being carried by a creature in some way. Such pearls should not be scanned.
+        /// </summary>
+        /// <param name="pearl">The pearl to check.</param>
+        /// <returns>Whether or not the pearl is currently being carried.</returns>
+        public static bool PearlOwnedByCreature(DataPearl pearl) // This function exists because of Pearlcat's inventory.
+        {
+            if (pearl.grabbedBy.Count > 0)
+            {
+                return true;
+            }
+            if (Plugin.PearlcatEnabled)
+            {
+                foreach (AbstractCreature player in pearl.room.game.Players)
+                {
+                    if (player.realizedCreature != null &&
+                        Pearlcat.Hooks.TryGetPearlcatModule(player.realizedCreature as Player, out Pearlcat.PlayerModule module) &&
+                        module.Inventory.Any(x => x.realizedObject != null && x.realizedObject == pearl))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -402,7 +451,7 @@ namespace GateScanner
             {
                 if (HeldPearl != null)
                 {
-                    if (HeldPearl.grabbedBy.Count == 0)
+                    if (!PearlOwnedByCreature(HeldPearl))
                     {
                         // Move pearl into position
                         HeldPearl.firstChunk.vel *= RWCustom.Custom.LerpMap(HeldPearl.firstChunk.vel.magnitude, 1f, 6f, 0.9f, 0.8f);
@@ -496,7 +545,7 @@ namespace GateScanner
                     Step2Timer = 0;
                     if (!ScannerUnderWater && ErrorTimer == 0) // The gate symbols don't display properly underwater.
                     {
-                        List<DataPearl> readablePearls = PearlsInGateRange().Where(x => x.grabbedBy.Count == 0 && !x.slatedForDeletetion && x.room != null && x.room.abstractRoom.index == Gate.room.abstractRoom.index && !AlreadyScanned.Contains(x)).ToList();
+                        List<DataPearl> readablePearls = PearlsInGateRange().Where(x => !PearlOwnedByCreature(x) && !x.slatedForDeletetion && x.room != null && x.room.abstractRoom.index == Gate.room.abstractRoom.index && !AlreadyScanned.Contains(x)).ToList();
                         if (readablePearls.Count > 0 && PlayerInRoom())
                         {
                             HeldPearl = readablePearls[Random.Range(0, readablePearls.Count)];
