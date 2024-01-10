@@ -155,7 +155,7 @@ namespace GateScanner
 
         public T GetUninit<T>()
         {
-            return (T) System.Runtime.Serialization.FormatterServices.GetSafeUninitializedObject(typeof(T)); // This creates an object without calling its constructor.
+            return (T)System.Runtime.Serialization.FormatterServices.GetSafeUninitializedObject(typeof(T)); // This creates an object without calling its constructor.
         }
         /// <summary>
         /// Starts a pearl dialogue for the current <see cref="HeldPearl"/>.
@@ -342,7 +342,7 @@ namespace GateScanner
         public bool CanHaveConversation()
         {
             StoryGameSession session = Gate.room.game.GetStorySession;
-            
+
             if (!(session.saveState.deathPersistentSaveData.theMark || (ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint)))
             {
                 return false;
@@ -359,7 +359,7 @@ namespace GateScanner
             {
                 return PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SSaiConversationsHad > 0 && session.saveState.hasRobo);
             }
-            else if (Plugin.PearlcatEnabled && session.saveStateNumber == Pearlcat.Enums.Pearlcat)
+            else if (Plugin.PearlcatEnabled && session.saveStateNumber.value == "Pearlcat")
             {
                 return PearlcatCanAccessLooksToTheMoon(session); // || PearlcatCanAccessFivePebbles(session);
             }
@@ -386,17 +386,21 @@ namespace GateScanner
             }
             if (Plugin.PearlcatEnabled)
             {
-                foreach (AbstractCreature player in pearl.room.game.Players)
+                if (PearlcatInventoryCheck(pearl))
                 {
-                    if (player.realizedCreature != null &&
-                        Pearlcat.Hooks.TryGetPearlcatModule(player.realizedCreature as Player, out Pearlcat.PlayerModule module) &&
-                        module.Inventory.Any(x => x.realizedObject != null && x.realizedObject == pearl))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
             return false;
+        }
+        /// <summary>
+        /// Checks whether or not a pearl is owned by Pearlcat. Requires Pearlcat to function.
+        /// </summary>
+        /// <param name="pearl">The Pearl to check.</param>
+        /// <returns>Whether or not the pearl is owned by Pearlcat.</returns>
+        public static bool PearlcatInventoryCheck(DataPearl pearl)
+        {
+            return Pearlcat.Hooks.IsPlayerObject(pearl.abstractPhysicalObject);
         }
 
         /// <summary>
