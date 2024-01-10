@@ -439,6 +439,7 @@ namespace GateScanner
             if (HeldPearl != null && !PlayerInRoom())
             {
                 Debug.Log("All players left the room, scanner disabled");
+                AlreadyScanned.Add(HeldPearl);
                 DropHeldPearl();
             }
             // Turn scanner off if the room floods
