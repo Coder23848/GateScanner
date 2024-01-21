@@ -81,11 +81,11 @@ namespace GateScanner
         /// <summary>
         /// The height (in the room) that the pearl is held at.
         /// </summary>
-        public float PearlHoldHeight => Gate.room.PixelWidth / 2;
+        public float PearlHoldHeight => 260;
         /// <summary>
         /// The position of the <see cref="HeldPearl"/>.
         /// </summary>
-        public Vector2 PearlHoldPos => new(PearlHoldHeight + (HeldPearlSide.Value ? 90 : -90), 260);
+        public Vector2 PearlHoldPos => new(Gate.room.PixelWidth / 2 + (HeldPearlSide.Value ? 90 : -90), PearlHoldHeight);
         /// <summary>
         /// If true, the water level in the room is too high for the scanner to be functional.
         /// </summary>
@@ -95,11 +95,11 @@ namespace GateScanner
             {
                 if (Gate.room.waterInverted)
                 {
-                    return Gate.room.floatWaterLevel < PearlHoldHeight + 10;
+                    return Gate.room.floatWaterLevel + 10 < PearlHoldHeight;
                 }
                 else
                 {
-                    return Gate.room.floatWaterLevel > PearlHoldHeight - 10;
+                    return Gate.room.floatWaterLevel - 10 > PearlHoldHeight;
                 }
             }
         }
@@ -291,20 +291,24 @@ namespace GateScanner
         /// </summary>
         public void DropHeldPearl()
         {
-            if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel && Step1Timer > 0)
-            {
-                AbstractPhysicalObject abstractPhysicalObject = new(Gate.room.world, MoreSlugcatsEnums.AbstractObjectType.SingularityBomb, null, Gate.room.GetWorldCoordinate(PearlHoldPos), Gate.room.world.game.GetNewID());
-                Gate.room.abstractRoom.AddEntity(abstractPhysicalObject);
-                abstractPhysicalObject.RealizeInRoom();
-                SingularityBomb bomb = abstractPhysicalObject.realizedObject as SingularityBomb;
-                bomb.Explode();
-                bomb.Destroy();
-                HeldPearl.Destroy();
-            }
             if (HeldPearl != null)
             {
+                if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel && Step1Timer > 0)
+                {
+                    AbstractPhysicalObject abstractPhysicalObject = new(Gate.room.world, MoreSlugcatsEnums.AbstractObjectType.SingularityBomb, null, Gate.room.GetWorldCoordinate(PearlHoldPos), Gate.room.world.game.GetNewID());
+                    Gate.room.abstractRoom.AddEntity(abstractPhysicalObject);
+                    abstractPhysicalObject.RealizeInRoom();
+                    SingularityBomb bomb = abstractPhysicalObject.realizedObject as SingularityBomb;
+                    bomb.Explode();
+                    bomb.Destroy();
+                    HeldPearl.Destroy();
+                }
                 HeldPearl.gravity = 0.9f;
                 HeldPearl = null;
+            }
+            else
+            {
+                Debug.Log("GateScanner.GateScannerObject.DropHeldPearl() called without a pearl to drop. This isn't going to break anything, but it probably shouldn't happen.");
             }
             HeldPearlSide = null;
             Step1Timer = 0;
