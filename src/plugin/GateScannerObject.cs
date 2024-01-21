@@ -301,8 +301,11 @@ namespace GateScanner
                 bomb.Destroy();
                 HeldPearl.Destroy();
             }
-            HeldPearl.gravity = 0.9f;
-            HeldPearl = null;
+            if (HeldPearl != null)
+            {
+                HeldPearl.gravity = 0.9f;
+                HeldPearl = null;
+            }
             HeldPearlSide = null;
             Step1Timer = 0;
             Step1TimeRequired = -1;
@@ -443,7 +446,7 @@ namespace GateScanner
                 DropHeldPearl();
             }
             // Turn scanner off if the room floods
-            if (ScannerUnderWater)
+            if (HeldPearl != null && ScannerUnderWater)
             {
                 Debug.Log("Scanner submerged");
                 DropHeldPearl();
