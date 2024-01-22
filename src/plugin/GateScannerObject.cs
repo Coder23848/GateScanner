@@ -93,13 +93,20 @@ namespace GateScanner
         {
             get
             {
-                if (Gate.room.waterInverted)
+                if (Gate.room.waterObject != null)
                 {
-                    return Gate.room.floatWaterLevel + 10 < PearlHoldHeight;
+                    if (Gate.room.waterInverted)
+                    {
+                        return Gate.room.waterObject.fWaterLevel - 10 < PearlHoldHeight;
+                    }
+                    else
+                    {
+                        return Gate.room.waterObject.fWaterLevel + 10 > PearlHoldHeight;
+                    }
                 }
                 else
                 {
-                    return Gate.room.floatWaterLevel - 10 > PearlHoldHeight;
+                    return false;
                 }
             }
         }
