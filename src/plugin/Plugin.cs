@@ -294,10 +294,6 @@ namespace GateScanner
                 self.symbolDirty = false;
             }
 
-            if (thisData.InScanMode)
-            {
-                //sLeaser.sprites[0].y -= 20; // Move the light down to where the scanner is
-            }
             Color spriteColor = Color.Lerp(
                 Color.Lerp(
                     self.myDefaultColor, 

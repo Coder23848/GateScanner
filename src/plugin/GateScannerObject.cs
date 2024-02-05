@@ -215,7 +215,7 @@ namespace GateScanner
             dummyOracleBehavior.isRepeatedDiscussion = false;
 
             SlugcatStats.Name slugcatName = Gate.room.game.GetStorySession.saveStateNumber;
-            if (ModManager.MSC && slugcatName == MoreSlugcatsEnums.SlugcatStatsName.Spear)
+            if (ModManager.MSC && UsesPreCollapseLooksToTheMoon(slugcatName))
             {
                 dummyOracleBehavior.oracle.ID = MoreSlugcatsEnums.OracleID.DM;
                 if (important)
@@ -224,7 +224,7 @@ namespace GateScanner
                     Gate.room.game.rainWorld.progression.miscProgressionData.SetDMPearlDeciphered(HeldPearl.AbstractPearl.dataPearlType, false);
                 }
             }
-            else if (ModManager.MSC && slugcatName == MoreSlugcatsEnums.SlugcatStatsName.Artificer)
+            else if (ModManager.MSC && UsesFivePebbles(slugcatName))
             {
                 dummyOracleBehavior.oracle.ID = Oracle.OracleID.SS;
                 if (important)
@@ -330,6 +330,25 @@ namespace GateScanner
             }
         }
 
+        /// <summary>
+        /// Checks whether or not a given slugcat uses Pre-Collapse Looks to the Moon to read pearls normally.
+        /// </summary>
+        /// <param name="name">The slugcat to check.</param>
+        /// <returns>Whether or not the given slugcat uses Pre-Collapse Looks to the Moon to read pearls.</returns>
+        public static bool UsesPreCollapseLooksToTheMoon(SlugcatStats.Name name)
+        {
+            return name == MoreSlugcatsEnums.SlugcatStatsName.Spear || name.value == "vinki";
+        }
+        /// <summary>
+        /// Checks whether or not a given slugcat uses Five Pebbles to read pearls normally.
+        /// </summary>
+        /// <param name="name">The slugcat to check.</param>
+        /// <returns>Whether or not the given slugcat uses Five Pebbles to read pearls.</returns>
+        public static bool UsesFivePebbles(SlugcatStats.Name name)
+        {
+            return name == MoreSlugcatsEnums.SlugcatStatsName.Artificer;
+        }
+
         public bool PearlcatCanAccessLooksToTheMoon(StoryGameSession session)
         {
             return LooksToTheMoonAvailable(session);
@@ -365,11 +384,11 @@ namespace GateScanner
             {
                 return true;
             }
-            else if (ModManager.MSC && session.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Spear)
+            else if (ModManager.MSC && UsesPreCollapseLooksToTheMoon(session.saveStateNumber))
             {
                 return PluginOptions.UnlockScannerCheat.Value || session.saveState.miscWorldSaveData.SLOracleState.playerEncounters > 0 || session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0; // Expedition Mode sets playerEncountersWithMark only, the first visit to Looks to the Moon sets playerEncounters only.
             }
-            else if (ModManager.MSC && session.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Artificer)
+            else if (ModManager.MSC && UsesFivePebbles(session.saveStateNumber))
             {
                 return PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SSaiConversationsHad > 0 && session.saveState.hasRobo);
             }
@@ -427,7 +446,7 @@ namespace GateScanner
             {
                 return new(0f, 1f, 0f);
             }
-            else if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Artificer)
+            else if (ModManager.MSC && UsesFivePebbles(Gate.room.game.GetStorySession.characterStats.name))
             {
                 return new(0.44705883f, 0.9019608f, 0.76862746f);
             }
@@ -580,7 +599,7 @@ namespace GateScanner
                             {
                                 Step2TimeRequired = 300;
                             }
-                            if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Artificer && (HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc || HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc2) && Gate.room.game.SeededRandomRange(HeldPearl.abstractPhysicalObject.ID.RandomSeed, 0, 47) == 45)
+                            if (ModManager.MSC && UsesFivePebbles(Gate.room.game.GetStorySession.characterStats.name) && (HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc || HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc2) && Gate.room.game.SeededRandomRange(HeldPearl.abstractPhysicalObject.ID.RandomSeed, 0, 47) == 45)
                             {
                                 // For testing purposes, ID 3 is malicious.
                                 Debug.Log("This is a malicious pearl. The data is meaningless, but the way it is formatted would cause older machinery to get stuck in an infinite recursion trying to read it.");
