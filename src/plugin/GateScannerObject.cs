@@ -218,7 +218,7 @@ namespace GateScanner
             if (ModManager.MSC && UsesPreCollapseLooksToTheMoon(slugcatName))
             {
                 dummyOracleBehavior.oracle.ID = MoreSlugcatsEnums.OracleID.DM;
-                if (important)
+                if (important && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.Spearmasterpearl)
                 {
                     dummyOracleBehavior.isRepeatedDiscussion = Gate.room.game.rainWorld.progression.miscProgressionData.GetDMPearlDeciphered(HeldPearl.AbstractPearl.dataPearlType);
                     Gate.room.game.rainWorld.progression.miscProgressionData.SetDMPearlDeciphered(HeldPearl.AbstractPearl.dataPearlType, false);
@@ -227,7 +227,7 @@ namespace GateScanner
             else if (ModManager.MSC && UsesFivePebbles(slugcatName))
             {
                 dummyOracleBehavior.oracle.ID = Oracle.OracleID.SS;
-                if (important)
+                if (important && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.Spearmasterpearl)
                 {
                     dummyOracleBehavior.isRepeatedDiscussion = Gate.room.game.rainWorld.progression.miscProgressionData.GetPebblesPearlDeciphered(HeldPearl.AbstractPearl.dataPearlType);
                     Gate.room.game.rainWorld.progression.miscProgressionData.SetPebblesPearlDeciphered(HeldPearl.AbstractPearl.dataPearlType, false);
@@ -252,7 +252,7 @@ namespace GateScanner
                 }
                 else
                 {
-                    if (!dummyOracleBehavior.isRepeatedDiscussion && ModManager.MSC)
+                    if (!dummyOracleBehavior.isRepeatedDiscussion && ModManager.MSC && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.Spearmasterpearl)
                     {
                         if (Gate.room.world.game.GetStorySession.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Saint)
                         {
@@ -266,7 +266,7 @@ namespace GateScanner
                 }
             }
 
-            if (important && !saintBleachedPearl && !slOracleState.significantPearls.Contains(HeldPearl.AbstractPearl.dataPearlType))
+            if (important && !(ModManager.MSC && HeldPearl.AbstractPearl.dataPearlType == MoreSlugcatsEnums.DataPearlType.Spearmasterpearl) && !saintBleachedPearl && !slOracleState.significantPearls.Contains(HeldPearl.AbstractPearl.dataPearlType))
             {
                 slOracleState.significantPearls.Add(HeldPearl.AbstractPearl.dataPearlType);
             }

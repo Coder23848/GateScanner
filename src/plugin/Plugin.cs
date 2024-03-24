@@ -363,7 +363,6 @@ namespace GateScanner
                     else
                     {
                         // Looks to the Moon reading Spearmaster's pearl, before she writes to it
-                        self.PearlIntro();
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Strange..."), 10));
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("The internal lattice of this pearl seems to have been partially replaced by organic matter."), 10));
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("While it may still contain readable data, such an unusual format defeats the devices used in the archive system."), 10));
@@ -651,7 +650,7 @@ namespace GateScanner
             }
         }
 
-        // Thanks to what appears to be a bug in Downpour, misc pearls read (via puppet) by Five Pebbles and pre-collapse Looks to the Moon do not respect the ID of the pearl. Broadcast pearls have this problem too, but that's harder to fix and harder to notice.
+        // Thanks to what appears to be a bug in Downpour, misc pearls read (via puppet) by Five Pebbles and pre-collapse Looks to the Moon do not respect the ID of the pearl. Broadcast pearls have this problem too, but that's harder to fix and harder to notice. This bug has not been fixed as of v1.9.15.
         private void MoonConversation_MiscPearl(On.SLOracleBehaviorHasMark.MoonConversation.orig_MiscPearl orig, SLOracleBehaviorHasMark.MoonConversation self, bool miscPearl2)
         {
             OracleBehavior actualMyBehavior = self.myBehavior;
