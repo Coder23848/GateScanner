@@ -481,142 +481,134 @@ namespace GateScanner
                 Debug.Log("Scanner submerged");
                 DropHeldPearl();
             }
+            // The gate is supposed to be suppressed while the scanner is active, but if it does somehow activate it should get priority.
+            if (HeldPearl != null && !(Gate.mode == RegionGate.Mode.MiddleClosed || Gate.mode == RegionGate.Mode.Closed || Gate.mode == RegionGate.Mode.Broken))
+            {
+                Debug.Log("Gate " + Gate.room.abstractRoom.name + " active, scanner disabled");
+                DropHeldPearl();
+            }
+            // Something grabbed the pearl out of the scanner
+            if (HeldPearl != null && PearlOwnedByCreature(HeldPearl))
+            {
+                Debug.Log("Pearl removed from gate scanner " + Gate.room.abstractRoom.name);
+                DropHeldPearl();
+            }
             if (ErrorTimer > 0)
             {
                 ErrorTimer--;
             }
-            if (Gate.mode == RegionGate.Mode.MiddleClosed || Gate.mode == RegionGate.Mode.Closed || Gate.mode == RegionGate.Mode.Broken) // The scanner only works when the gate is not being used as a gate
+            if (HeldPearl != null)
             {
-                if (HeldPearl != null)
+                // Move pearl into position
+                HeldPearl.firstChunk.vel *= RWCustom.Custom.LerpMap(HeldPearl.firstChunk.vel.magnitude, 1f, 6f, 0.9f, 0.8f);
+                HeldPearl.firstChunk.vel += Vector2.ClampMagnitude(PearlHoldPos - HeldPearl.firstChunk.pos, 100f) / 100f * 0.4f;
+                HeldPearl.gravity = 0f;
+                if (HeldPearl.firstChunk.vel.magnitude < 0.001f && Vector2.Distance(HeldPearl.firstChunk.pos, PearlHoldPos) < 0.1f) // Pearl is in position
                 {
-                    if (!PearlOwnedByCreature(HeldPearl))
+                    // Lock pearl into position
+                    HeldPearl.firstChunk.vel = new(0, 0);
+                    HeldPearl.firstChunk.pos = PearlHoldPos;
+                    if (Step1Timer == 0)
                     {
-                        // Move pearl into position
-                        HeldPearl.firstChunk.vel *= RWCustom.Custom.LerpMap(HeldPearl.firstChunk.vel.magnitude, 1f, 6f, 0.9f, 0.8f);
-                        HeldPearl.firstChunk.vel += Vector2.ClampMagnitude(PearlHoldPos - HeldPearl.firstChunk.pos, 100f) / 100f * 0.4f;
-                        HeldPearl.gravity = 0f;
-                        if (HeldPearl.firstChunk.vel.magnitude < 0.001f && Vector2.Distance(HeldPearl.firstChunk.pos, PearlHoldPos) < 0.1f) // Pearl is in position
+                        Gate.room.PlaySound(SoundID.SS_AI_Text, PearlHoldPos, 0.5f * BEEPVOLUME, 1.25f);
+                        if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel)
                         {
-                            // Lock pearl into position
-                            HeldPearl.firstChunk.vel = new(0, 0);
-                            HeldPearl.firstChunk.pos = PearlHoldPos;
-                            if (Step1Timer == 0)
+                            Gate.room.lockedShortcuts.Clear();
+                            for (int i = 0; i < Gate.room.shortcutsIndex.Length; i++)
                             {
-                                Gate.room.PlaySound(SoundID.SS_AI_Text, PearlHoldPos, 0.5f * BEEPVOLUME, 1.25f);
-                                if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel)
-                                {
-                                    Gate.room.lockedShortcuts.Clear();
-                                    for (int i = 0; i < Gate.room.shortcutsIndex.Length; i++)
-                                    {
-                                        Gate.room.lockedShortcuts.Add(Gate.room.shortcutsIndex[i]);
-                                    }
-                                }
-                            }
-                            Step1Timer++;
-                            if (Step1Timer > Step1TimeRequired && Step1TimeRequired > 0)
-                            {
-                                Step2Timer++;
-                                if (Step2Timer > Step2TimeRequired && Step2TimeRequired > 0)
-                                {
-                                    if (Speaker == null) // Scan complete, reading not started. In other words, the frame the scan finishes.
-                                    {
-                                        if (CanHaveConversation())
-                                        {
-                                            Gate.room.PlaySound(SoundID.SS_AI_Text, PearlHoldPos, BEEPVOLUME, 1.5f);
-                                            // Start pearl dialogue
-                                            Debug.Log("Scanned!");
-                                            StartConversation();
-
-                                            if (!AnyScannerUsedBefore)
-                                            {
-                                                Debug.Log("First time using gate scanner!");
-                                                AnyScannerUsedBefore = true;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            Gate.room.PlaySound(SoundID.SS_AI_Text, PearlHoldPos, BEEPVOLUME, 0.9f);
-                                            // But nobody came...
-                                            Debug.Log("Scan request at " + Gate.room.abstractRoom.name + " was unable to be completed");
-                                            AlreadyScanned.Add(HeldPearl);
-                                            DropHeldPearl();
-                                            ErrorTimer = 60;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Speaker.Update();
-                                        if (Speaker.events.Count == 0)
-                                        {
-                                            Debug.Log("Scan finished at " + Gate.room.abstractRoom.name);
-                                            AlreadyScanned.Add(HeldPearl);
-                                            Speaker.Destroy();
-                                            Speaker = null;
-                                            DropHeldPearl();
-                                        }
-                                    }
-                                }
+                                Gate.room.lockedShortcuts.Add(Gate.room.shortcutsIndex[i]);
                             }
                         }
-                        else
+                    }
+                    Step1Timer++;
+                    if (Step1Timer > Step1TimeRequired && Step1TimeRequired > 0)
+                    {
+                        Step2Timer++;
+                        if (Step2Timer > Step2TimeRequired && Step2TimeRequired > 0)
                         {
-                            Step1Timer = 0;
-                            Step2Timer = 0;
+                            if (Speaker == null) // Scan complete, reading not started. In other words, the frame the scan finishes.
                             {
-                                if (Speaker != null) // Conversation interrupted by movement of pearl
+                                if (CanHaveConversation())
                                 {
-                                    Debug.Log("Scan interrupted at " + Gate.room.abstractRoom.name);
+                                    Gate.room.PlaySound(SoundID.SS_AI_Text, PearlHoldPos, BEEPVOLUME, 1.5f);
+                                    // Start pearl dialogue
+                                    Debug.Log("Scanned!");
+                                    StartConversation();
+
+                                    if (!AnyScannerUsedBefore)
+                                    {
+                                        Debug.Log("First time using gate scanner!");
+                                        AnyScannerUsedBefore = true;
+                                    }
+                                }
+                                else
+                                {
+                                    Gate.room.PlaySound(SoundID.SS_AI_Text, PearlHoldPos, BEEPVOLUME, 0.9f);
+                                    // But nobody came...
+                                    Debug.Log("Scan request at " + Gate.room.abstractRoom.name + " was unable to be completed");
+                                    AlreadyScanned.Add(HeldPearl);
+                                    DropHeldPearl();
+                                    ErrorTimer = 60;
+                                }
+                            }
+                            else
+                            {
+                                Speaker.Update();
+                                if (Speaker.events.Count == 0)
+                                {
+                                    Debug.Log("Scan finished at " + Gate.room.abstractRoom.name);
+                                    AlreadyScanned.Add(HeldPearl);
+                                    Speaker.Destroy();
+                                    Speaker = null;
                                     DropHeldPearl();
                                 }
                             }
                         }
-                    }
-                    else // Something grabbed the pearl out of the scanner
-                    {
-                        Debug.Log("Pearl removed from gate scanner " + Gate.room.abstractRoom.name);
-                        DropHeldPearl();
                     }
                 }
                 else
                 {
                     Step1Timer = 0;
                     Step2Timer = 0;
-                    if (!ScannerUnderWater && ErrorTimer == 0) // The gate symbols don't display properly underwater.
                     {
-                        List<DataPearl> readablePearls = PearlsInGateRange().Where(x => !PearlOwnedByCreature(x) && !x.slatedForDeletetion && x.room != null && x.room.abstractRoom.index == Gate.room.abstractRoom.index && !AlreadyScanned.Contains(x)).ToList();
-                        if (readablePearls.Count > 0 && PlayerInRoom())
+                        if (Speaker != null) // Conversation interrupted by movement of pearl
                         {
-                            HeldPearl = readablePearls[Random.Range(0, readablePearls.Count)];
-                            HeldPearlSide = HeldPearl.firstChunk.pos.x > Gate.room.PixelWidth / 2;
-                            Step1TimeRequired = Random.Range(10, 30);
-                            Step2TimeRequired = Random.Range(60, 120);
-                            if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint)
-                            {
-                                Step1TimeRequired *= 2;
-                                Step2TimeRequired *= 2;
-                            }
-                            if (!CanHaveConversation())
-                            {
-                                Step2TimeRequired = 300;
-                            }
-                            if (ModManager.MSC && UsesFivePebbles(Gate.room.game.GetStorySession.characterStats.name) && (HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc || HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc2) && Gate.room.game.SeededRandomRange(HeldPearl.abstractPhysicalObject.ID.RandomSeed, 0, 47) == 45)
-                            {
-                                // For testing purposes, ID 3 is malicious.
-                                Debug.Log("This is a malicious pearl. The data is meaningless, but the way it is formatted would cause older machinery to get stuck in an infinite recursion trying to read it.");
-                                Step1TimeRequired = -1;
-                            }
-                            Debug.Log("Gate scanner " + Gate.room.abstractRoom.name + " found pearl " + HeldPearl.AbstractPearl.dataPearlType);
+                            Debug.Log("Scan interrupted at " + Gate.room.abstractRoom.name);
+                            DropHeldPearl();
                         }
                     }
                 }
             }
             else
             {
-                // The gate is supposed to be suppressed while the scanner is active, but if it does somehow activate it should get priority.
-                if (HeldPearl != null)
+                Step1Timer = 0;
+                Step2Timer = 0;
+                if (!ScannerUnderWater && ErrorTimer == 0) // The gate symbols don't display properly underwater.
                 {
-                    Debug.Log("Gate " + Gate.room.abstractRoom.name + " active, scanner disabled");
-                    DropHeldPearl();
+                    List<DataPearl> readablePearls = PearlsInGateRange().Where(x => !PearlOwnedByCreature(x) && !x.slatedForDeletetion && x.room != null && x.room.abstractRoom.index == Gate.room.abstractRoom.index && !AlreadyScanned.Contains(x)).ToList();
+                    if (readablePearls.Count > 0 && PlayerInRoom())
+                    {
+                        HeldPearl = readablePearls[Random.Range(0, readablePearls.Count)];
+                        HeldPearlSide = HeldPearl.firstChunk.pos.x > Gate.room.PixelWidth / 2;
+                        Step1TimeRequired = Random.Range(10, 30);
+                        Step2TimeRequired = Random.Range(60, 120);
+                        if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint)
+                        {
+                            Step1TimeRequired *= 2;
+                            Step2TimeRequired *= 2;
+                        }
+                        if (!CanHaveConversation())
+                        {
+                            Step2TimeRequired = 300;
+                        }
+                        if (ModManager.MSC && UsesFivePebbles(Gate.room.game.GetStorySession.characterStats.name) && (HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc || HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc2) && Gate.room.game.SeededRandomRange(HeldPearl.abstractPhysicalObject.ID.RandomSeed, 0, 47) == 45)
+                        {
+                            // For testing purposes, ID 3 is malicious.
+                            Debug.Log("This is a malicious pearl. The data is meaningless, but the way it is formatted would cause older machinery to get stuck in an infinite recursion trying to read it.");
+                            Step1TimeRequired = -1;
+                        }
+                        Debug.Log("Gate scanner " + Gate.room.abstractRoom.name + " found pearl " + HeldPearl.AbstractPearl.dataPearlType);
+                    }
                 }
             }
         }
