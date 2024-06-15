@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net481</TargetFramework>
     <AssemblyName>gatescanner</AssemblyName>
     <Description>Gate Scanner</Description>
-    <Version>1.1.5</Version>
+    <Version>1.2.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
@@ -28,6 +28,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="CWStuff">
+      <HintPath>..\..\dependencies\CWStuff.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Pearlcat">
       <HintPath>..\..\dependencies\Pearlcat.dll</HintPath>
       <Private>False</Private>

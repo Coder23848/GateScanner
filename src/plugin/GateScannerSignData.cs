@@ -27,6 +27,10 @@ namespace GateScanner
         /// </summary>
         public int ScrollCounter { get; set; }
         /// <summary>
+        /// The ID color of the iterator that is currently talking. Only updates when <see cref="IteratorColorIntensity"/> is zero, because it needs to be desynced from <see cref="GateScannerObject.IteratorColor"/> during fade-out animations.
+        /// </summary>
+        public Color IteratorColor { get; set; }
+        /// <summary>
         /// When 1, the color of the sign is changed to the ID color of whoever is currently talking.
         /// </summary>
         public float IteratorColorIntensity { get; set; }
@@ -56,6 +60,7 @@ namespace GateScanner
             Step1AnimationTimer = 0;
             Step2AnimationTimer = 0;
             ScrollCounter = 0;
+            IteratorColor = new(0, 0, 0);
             IteratorColorIntensity = 0f;
             LastIteratorColorIntensity = 0f;
             ErrorColorIntensity = 0f;

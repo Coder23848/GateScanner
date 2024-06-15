@@ -1,8 +1,10 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using BepInEx;
 using MoreSlugcats;
 using UnityEngine;
+using static GateScanner.GateScannerObject;
 
 namespace GateScanner
 {
@@ -23,10 +25,13 @@ namespace GateScanner
             On.GateKarmaGlyph.Update += GateKarmaGlyph_Update;
             On.GateKarmaGlyph.DrawSprites += GateKarmaGlyph_DrawSprites;
             On.GateKarmaGlyph.ShouldPlayCitizensIDAnimation += GateKarmaGlyph_ShouldPlayCitizensIDAnimation;
+
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents += MoonConversation_AddEvents;
             On.SLOracleBehaviorHasMark.MoonConversation.PearlIntro += MoonConversation_PearlIntro;
             On.SLOracleBehaviorHasMark.MoonConversation.PebblesPearl += MoonConversation_PebblesPearl;
             On.SLOracleBehaviorHasMark.MoonConversation.MiscPearl += MoonConversation_MiscPearl;
+
+            On.RainWorldGame.ctor += RainWorldGame_ctor;
         }
 
         // TODO: Pearlcat Five Pebbles support, translation support?
@@ -36,6 +41,10 @@ namespace GateScanner
         /// </summary>
         public static bool PearlcatEnabled { get; set; }
         /// <summary>
+        /// Whether or not the Chasing Wind mod is active.
+        /// </summary>
+        public static bool ChasingWindEnabled { get; set; }
+        /// <summary>
         /// The speed at which the "progress bar" moves in the scanning animation.
         /// </summary>
         const int PROGRESS_BAR_TICK_TIME = 25;
@@ -44,8 +53,15 @@ namespace GateScanner
         /// </summary>
         const int TICKS_PER_SCROLL_FRAME = 3;
 
+        public static readonly ConditionalWeakTable<RainWorldGame, List<(DialogueType, EntityID)>> PreviousIteratorTable = new(); // The list contains every iterator-pearl combination that has been used that cycle.
+        private void RainWorldGame_ctor(On.RainWorldGame.orig_ctor orig, RainWorldGame self, ProcessManager manager)
+        {
+            orig(self, manager);
+            PreviousIteratorTable.Add(self, new());
+        }
+
         // Gate handling
-        readonly ConditionalWeakTable<RegionGate, GateScannerObject> gateScannerTable = new();
+        static readonly ConditionalWeakTable<RegionGate, GateScannerObject> gateScannerTable = new();
         private void RegionGate_ctor(On.RegionGate.orig_ctor orig, RegionGate self, Room room)
         {
             orig(self, room);
@@ -77,7 +93,7 @@ namespace GateScanner
         }
 
         // Gate sign handling
-        readonly ConditionalWeakTable<GateKarmaGlyph, GateScannerSignData> gateScannerSignTable = new();
+        static readonly ConditionalWeakTable<GateKarmaGlyph, GateScannerSignData> gateScannerSignTable = new();
         private void GateKarmaGlyph_ctor(On.GateKarmaGlyph.orig_ctor orig, GateKarmaGlyph self, bool side, RegionGate gate, RegionGate.GateRequirement requirement)
         {
             orig(self, side, gate, requirement);
@@ -202,6 +218,12 @@ namespace GateScanner
                 }
             }
 
+            // Reevaluate iterator color if possible
+            if (thisScanner.ThisIterator != null && thisData.IteratorColorIntensity == 0 && thisData.LastIteratorColorIntensity == 0)
+            {
+                thisData.IteratorColor = thisScanner.IteratorColor();
+            }
+
             // Manage Sofanthiel
             if (!self.controllingRobo) // I really hope this doesn't cause any problems with Sofanthiel's usual functionality.
             {
@@ -296,8 +318,8 @@ namespace GateScanner
 
             Color spriteColor = Color.Lerp(
                 Color.Lerp(
-                    self.myDefaultColor, 
-                    thisScanner.IteratorColor(),
+                    self.myDefaultColor,
+                    thisData.IteratorColor,
                     Mathf.Lerp(thisData.LastIteratorColorIntensity, thisData.IteratorColorIntensity, timeStacker)),
                 new Color(1f, 0f, 0f),
                 Mathf.Lerp(thisData.LastErrorColorIntensity, thisData.ErrorColorIntensity, timeStacker)
@@ -683,6 +705,11 @@ namespace GateScanner
             if (PearlcatEnabled)
             {
                 Debug.Log("Gate Scanner detected Pearlcat!");
+            }
+            ChasingWindEnabled = ModManager.ActiveMods.Any(x => x.id == "myr.chasing_wind");
+            if (ChasingWindEnabled)
+            {
+                Debug.Log("Gate Scanner detected Chasing Wind!");
             }
         }
     }

@@ -2,11 +2,20 @@
 using System.Linq;
 using MoreSlugcats;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace GateScanner
 {
     public class GateScannerObject
     {
+        public enum DialogueType
+        {
+            LooksToTheMoon,
+            SpearmasterLooksToTheMoon,
+            FivePebbles,
+            NoSignificantHarrassment,
+            ChasingWind
+        }
         /// <summary>
         /// The gate this <see cref="GateScannerObject"/> belongs to.
         /// </summary>
@@ -43,6 +52,7 @@ namespace GateScanner
         /// The <see cref="SLOracleBehaviorHasMark.MoonConversation"/> that provides the pearl dialogue. Attatched to a skeleton of an <see cref="Oracle"/>. If <see cref="null"/>, no one is talking.
         /// </summary>
         public SLOracleBehaviorHasMark.MoonConversation Speaker { get; set; }
+        public DialogueType? ThisIterator;
         /// <summary>
         /// A list of pearls that do not trigger the scanner.
         /// </summary>
@@ -124,6 +134,7 @@ namespace GateScanner
             Step2Timer = 0;
             Step2TimeRequired = 0;
             ErrorTimer = 0;
+            ThisIterator = null;
             Speaker = null;
         }
 
@@ -165,6 +176,33 @@ namespace GateScanner
             return (T)System.Runtime.Serialization.FormatterServices.GetSafeUninitializedObject(typeof(T)); // This creates an object without calling its constructor.
         }
         /// <summary>
+        /// Starts a pearl dialogue with Chasing Wind for the current held pearl. Requires Chasing Wind to function.
+        /// </summary>
+        public void StartChasingWindConversation()
+        {
+            Debug.Log("Chasing Wind Conversation");
+
+            // Make a fake Chasing Wind to do the talking
+            SSOracleBehavior dummyOracleBehavior = GetUninit<SSOracleBehavior>();
+            dummyOracleBehavior.oracle = GetUninit<Oracle>();
+            dummyOracleBehavior.oracle.room = Gate.room;
+            dummyOracleBehavior.inspectPearl = HeldPearl;
+            dummyOracleBehavior.isRepeatedDiscussion = false;
+            dummyOracleBehavior.oracle.ID = CWStuff.NewOracleID.CW;
+            dummyOracleBehavior.talkedAboutThisSession = new(); // This will get written to by StartItemConversation(), but never used as the scanner doesn't have "sessions".
+
+            Plugin.IsInGateConversationInit = true;
+            Plugin.CurrentlyInitializingScanner = this;
+            dummyOracleBehavior.StartItemConversation(HeldPearl);
+            Speaker = dummyOracleBehavior.pearlConversation; // Come to think of it, this might be a better way to do the main StartConversation function... I'm not going to worry about it for now.
+            if (Speaker == null)
+            {
+                Debug.Log("Chasing Wind conversation not properly initialized! This shouldn't happen.");
+            }
+            Plugin.CurrentlyInitializingScanner = null;
+            Plugin.IsInGateConversationInit = false;
+        }
+        /// <summary>
         /// Starts a pearl dialogue for the current <see cref="HeldPearl"/>.
         /// </summary>
         public void StartConversation()
@@ -172,6 +210,12 @@ namespace GateScanner
             if (Gate.room.game.cameras[0].hud.dialogBox == null)
             {
                 Gate.room.game.cameras[0].hud.InitDialogBox();
+            }
+
+            if (Plugin.ChasingWindEnabled && ThisIterator == DialogueType.ChasingWind)
+            {
+                StartChasingWindConversation(); // This needs to be handled in a separate function, but the logic is different anyways.
+                return;
             }
 
             // A lot of this code is an amalgamation of the vanilla pearl reading functions.
@@ -215,7 +259,7 @@ namespace GateScanner
             dummyOracleBehavior.isRepeatedDiscussion = false;
 
             SlugcatStats.Name slugcatName = Gate.room.game.GetStorySession.saveStateNumber;
-            if (ModManager.MSC && UsesPreCollapseLooksToTheMoon(slugcatName))
+            if (ModManager.MSC && ThisIterator == DialogueType.SpearmasterLooksToTheMoon)
             {
                 dummyOracleBehavior.oracle.ID = MoreSlugcatsEnums.OracleID.DM;
                 if (important && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.Spearmasterpearl)
@@ -224,7 +268,7 @@ namespace GateScanner
                     Gate.room.game.rainWorld.progression.miscProgressionData.SetDMPearlDeciphered(HeldPearl.AbstractPearl.dataPearlType, false);
                 }
             }
-            else if (ModManager.MSC && UsesFivePebbles(slugcatName))
+            else if (ModManager.MSC && ThisIterator == DialogueType.FivePebbles)
             {
                 dummyOracleBehavior.oracle.ID = Oracle.OracleID.SS;
                 if (important && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.Spearmasterpearl)
@@ -271,6 +315,7 @@ namespace GateScanner
                 slOracleState.significantPearls.Add(HeldPearl.AbstractPearl.dataPearlType);
             }
 
+            // set flags to indicate this is a scanner-based converstion and create the conversation
             Plugin.IsInGateConversationInit = true;
             Plugin.CurrentlyInitializingScanner = this;
             Speaker = new SLOracleBehaviorHasMark.MoonConversation(id, dummyOracleBehavior, SLOracleBehaviorHasMark.MiscItemType.NA);
@@ -317,11 +362,13 @@ namespace GateScanner
             {
                 Debug.Log("GateScanner.GateScannerObject.DropHeldPearl() called without a pearl to drop. This isn't going to break anything, but it probably shouldn't happen.");
             }
+            // turn off everything
             HeldPearlSide = null;
             Step1Timer = 0;
             Step1TimeRequired = -1;
             Step2Timer = 0;
             Step2TimeRequired = -1;
+            ThisIterator = null;
             if (Speaker != null)
             {
                 Speaker.Interrupt("...", 0);
@@ -368,39 +415,58 @@ namespace GateScanner
                    session.saveState.miscWorldSaveData.SLOracleState.neuronsLeft > 0 &&
                    (PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0 && session.saveState.miscWorldSaveData.SLOracleState.SpeakingTerms));
         }
-        /// <summary>
-        /// Determines whether or not an iterator will respond when a pearl is scanned.
-        /// </summary>
-        /// <returns>Whether or not an iterator will respond when a pearl is scanned.</returns>
-        public bool CanHaveConversation()
-        {
-            StoryGameSession session = Gate.room.game.GetStorySession;
 
-            if (!(session.saveState.deathPersistentSaveData.theMark || (ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint)))
-            {
-                return false;
-            }
-            else if (ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel)
-            {
-                return true;
-            }
-            else if (ModManager.MSC && UsesPreCollapseLooksToTheMoon(session.saveStateNumber))
-            {
-                return PluginOptions.UnlockScannerCheat.Value || session.saveState.miscWorldSaveData.SLOracleState.playerEncounters > 0 || session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0; // Expedition Mode sets playerEncountersWithMark only, the first visit to Looks to the Moon sets playerEncounters only.
-            }
-            else if (ModManager.MSC && UsesFivePebbles(session.saveStateNumber))
-            {
-                return PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SSaiConversationsHad > 0 && session.saveState.hasRobo);
-            }
-            else if (Plugin.PearlcatEnabled && session.saveStateNumber.value == "Pearlcat")
-            {
-                return PearlcatCanAccessLooksToTheMoon(session); // || PearlcatCanAccessFivePebbles(session);
-            }
-            else
-            {
-                return LooksToTheMoonAvailable(session);
-            }
+        /// <summary>
+        /// Determines whether Chasing Wind is available for pearl-reading in the current session. Requires Chasing Wind to function.
+        /// </summary>
+        public bool ChasingWindAvailable(StoryGameSession session)
+        {
+            return CWStuff.CWOracleHooks.WorldSaveData.TryGetValue(session.saveState.miscWorldSaveData, out CWStuff.CWOracleHooks.CWOracleWorldSaveData CWSaveData) && CWSaveData.NumberOfConversations > 0 && !(ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint);
         }
+        /// <summary>
+        /// Determines which iterators can respond when a pearl is scanned.
+        /// </summary>
+        /// <returns>A list containing all iterators that are currently available to respond.</returns>
+        public List<DialogueType> GetAllAvailableIterators()
+        {
+            List<DialogueType> ret = new();
+            StoryGameSession session = Gate.room.game.GetStorySession;
+            if (session.saveState.deathPersistentSaveData.theMark || (ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint)) // no one responds if you can't understand them
+            {
+                if (ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel)
+                {
+                    ret.Add(DialogueType.NoSignificantHarrassment);
+                }
+                else
+                {
+                    if (ModManager.MSC &&
+                        UsesPreCollapseLooksToTheMoon(session.saveStateNumber) &&
+                        (PluginOptions.UnlockScannerCheat.Value || session.saveState.miscWorldSaveData.SLOracleState.playerEncounters > 0 || session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0)) // Expedition Mode sets playerEncountersWithMark only, the first visit to Looks to the Moon sets playerEncounters only.
+                    {
+                        ret.Add(DialogueType.SpearmasterLooksToTheMoon);
+                    }
+                    else if (ModManager.MSC &&
+                             UsesFivePebbles(session.saveStateNumber) &&
+                             (PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SSaiConversationsHad > 0 && session.saveState.hasRobo)))
+                    {
+                        ret.Add(DialogueType.FivePebbles);
+                    }
+                    else if (LooksToTheMoonAvailable(session))
+                    {
+                        ret.Add(DialogueType.LooksToTheMoon);
+                    }
+                    if (Plugin.ChasingWindEnabled)
+                    {
+                        if (ChasingWindAvailable(session))
+                        {
+                            ret.Add(DialogueType.ChasingWind);
+                        }
+                    }
+                }
+            }
+            return ret;
+        }
+
         public bool PlayerInRoom()
         {
             return Gate.room.game.Players.Any(x => x.pos.room == Gate.room.abstractRoom.index && x.state.alive);
@@ -442,17 +508,23 @@ namespace GateScanner
         /// <returns>The ID color of the iterator that reads pearls.</returns>
         public Color IteratorColor()
         {
-            if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel)
+            switch (ThisIterator)
             {
-                return new(0f, 1f, 0f);
-            }
-            else if (ModManager.MSC && UsesFivePebbles(Gate.room.game.GetStorySession.characterStats.name))
-            {
-                return new(0.44705883f, 0.9019608f, 0.76862746f);
-            }
-            else
-            {
-                return new(1f, 0.8f, 0.3f);
+                case DialogueType.LooksToTheMoon:
+                case DialogueType.SpearmasterLooksToTheMoon:
+                    return new(1f, 0.8f, 0.3f);
+                case DialogueType.FivePebbles:
+                    return new(0.44705883f, 0.9019608f, 0.76862746f);
+                case DialogueType.NoSignificantHarrassment:
+                    return new(0f, 1f, 0f);
+                case DialogueType.ChasingWind:
+                    return new(0.7f, 0.7f, 0.7f);
+                case null:
+                    Debug.Log("IteratorColor() called with no iterator present. This shouldn't happen.");
+                    return new(0f, 0f, 0f);
+                default:
+                    Debug.Log("IteratorColor() called with an unrecognized iterator. This shouldn't happen.");
+                    return new(0f, 0f, 0f);
             }
         }
 
@@ -528,12 +600,18 @@ namespace GateScanner
                         {
                             if (Speaker == null) // Scan complete, reading not started. In other words, the frame the scan finishes.
                             {
-                                if (CanHaveConversation())
+                                if (ThisIterator != null)
                                 {
                                     Gate.room.PlaySound(SoundID.SS_AI_Text, PearlHoldPos, BEEPVOLUME, 1.5f);
                                     // Start pearl dialogue
                                     Debug.Log("Scanned!");
                                     StartConversation();
+
+                                    List<(DialogueType, EntityID)> previousIterators = Plugin.PreviousIteratorTable.GetValue(Gate.room.game, x => throw new System.Exception("The current game does not have a PreviousIteratorTable!"));
+                                    if (!previousIterators.Contains((ThisIterator.Value, HeldPearl.AbstractPearl.ID)))
+                                    {
+                                        previousIterators.Add((ThisIterator.Value, HeldPearl.AbstractPearl.ID));
+                                    }
 
                                     if (!AnyScannerUsedBefore)
                                     {
@@ -590,6 +668,28 @@ namespace GateScanner
                     {
                         HeldPearl = readablePearls[Random.Range(0, readablePearls.Count)];
                         HeldPearlSide = HeldPearl.firstChunk.pos.x > Gate.room.PixelWidth / 2;
+                        
+                        // determine which iterators can respond
+                        List<DialogueType> availableIterators = GetAllAvailableIterators();
+                        for (int i = 0; i < availableIterators.Count; i++)
+                        {
+                            Debug.Log("Available: " + availableIterators[i]);
+                        }
+
+                        // select an iterator to respond
+                        if (availableIterators.Count > 0)
+                        {
+                            List<(DialogueType, EntityID)> previousIterators = Plugin.PreviousIteratorTable.GetValue(Gate.room.game, x => throw new System.Exception("The current game does not have a PreviousIteratorTable!"));
+                            List<DialogueType> iteratorsNotResponded = availableIterators.Where(x => !previousIterators.Contains((x, HeldPearl.AbstractPearl.ID))).ToList();
+                            ThisIterator = iteratorsNotResponded.Count > 0 ? iteratorsNotResponded[Random.Range(0, iteratorsNotResponded.Count)] : availableIterators[Random.Range(0, availableIterators.Count)]; // Pick a random iterator, but prioritize ones that have not yet read the pearl this cycle. It might be a better idea to check if they've read it at all...
+                        }
+                        else
+                        {
+                            ThisIterator = null;
+                        }
+
+                        Debug.Log("Selected: " + ThisIterator);
+
                         Step1TimeRequired = Random.Range(10, 30);
                         Step2TimeRequired = Random.Range(60, 120);
                         if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint)
@@ -597,11 +697,11 @@ namespace GateScanner
                             Step1TimeRequired *= 2;
                             Step2TimeRequired *= 2;
                         }
-                        if (!CanHaveConversation())
+                        if (ThisIterator == null)
                         {
                             Step2TimeRequired = 300;
                         }
-                        if (ModManager.MSC && UsesFivePebbles(Gate.room.game.GetStorySession.characterStats.name) && (HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc || HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc2) && Gate.room.game.SeededRandomRange(HeldPearl.abstractPhysicalObject.ID.RandomSeed, 0, 47) == 45)
+                        if (ModManager.MSC && availableIterators.Contains(DialogueType.FivePebbles) && (HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc || HeldPearl.AbstractPearl.dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Misc2) && Gate.room.game.SeededRandomRange(HeldPearl.abstractPhysicalObject.ID.RandomSeed, 0, 47) == 45)
                         {
                             // For testing purposes, ID 3 is malicious.
                             Debug.Log("This is a malicious pearl. The data is meaningless, but the way it is formatted would cause older machinery to get stuck in an infinite recursion trying to read it.");

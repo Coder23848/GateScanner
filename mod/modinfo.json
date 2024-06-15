@@ -1,7 +1,7 @@
 {
 	"id": "gatescanner",
 	"name": "Gate Scanner",
-	"version": "1.1.5",
+	"version": "1.2.0",
 	"hide_version": false,
 	"authors": "Coder23848",
 	"description": "Allows pearls to be read remotely at gates.",
