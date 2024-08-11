@@ -34,7 +34,7 @@ namespace GateScanner
             On.RainWorldGame.ctor += RainWorldGame_ctor;
         }
 
-        // TODO: Pearlcat Five Pebbles support, translation support?
+        // TODO: Chasing Wind iterator pearl dialogue (after the in-person version is done), Chasing Wind Spearmaster pearl dialogue (only after the in-person version is done), ensure the slugcat looks at the scanner, Pearlcat Five Pebbles support, Pebbles Reads Pearls support, Hunter Expansion support, fix Hunter Expansion positioning bug (according to Steam comments), translation support?
 
         /// <summary>
         /// Whether or not the Pearlcat mod is active.
@@ -356,6 +356,22 @@ namespace GateScanner
         public static bool IsInGateConversationInit = false;
         public static GateScannerObject CurrentlyInitializingScanner = null;
         public static bool ConversationUsesPearlIntro = false;
+
+        /// <summary>
+        /// Requires Chasing Wind to function.
+        /// </summary>
+        private void CWPearlConversation_OnAddEvents(SLOracleBehaviorHasMark.MoonConversation self, ref bool runOriginalCode) // The function signature can't use a CWPearlConversation or it'll crash if CWStuff isn't installed.
+        {
+            ConversationUsesPearlIntro = false;
+
+            if (IsInGateConversationInit && !CurrentlyInitializingScanner.ChasingWindHasDialogueForPearl(CurrentlyInitializingScanner.HeldPearl))
+            {
+                // Generic dialogue in the case that Chasing Wind doesn't have unique dialogue for a pearl
+                Debug.Log("Chasing Wind doesn't have any dialogue for pearl " + CurrentlyInitializingScanner.HeldPearl.AbstractPearl.dataPearlType);
+                self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I'm sorry, whatever data was on this pearl has been scrambled by a flaw in the Archive System's translation module. I am unable to see it."), 10));
+                runOriginalCode = false;
+            }
+        }
         private void MoonConversation_AddEvents(On.SLOracleBehaviorHasMark.MoonConversation.orig_AddEvents orig, SLOracleBehaviorHasMark.MoonConversation self)
         {
             ConversationUsesPearlIntro = false;
@@ -387,7 +403,7 @@ namespace GateScanner
                         // Looks to the Moon reading Spearmaster's pearl, before she writes to it
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Strange..."), 10));
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("The internal lattice of this pearl seems to have been partially replaced by organic matter."), 10));
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("While it may still contain readable data, such an unusual format defeats the devices used in the archive system."), 10));
+                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("While it may still contain readable data, such an unusual format defeats the devices used in the Archive System."), 10));
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("If you are determined to know what it says, you will have to bring it to my facility."), 10));
                     }
                     ConversationUsesPearlIntro = false;
@@ -421,6 +437,19 @@ namespace GateScanner
 
             ConversationUsesPearlIntro = false;
         }
+        /// <summary>
+        /// Requires Chasing Wind to function.
+        /// </summary>
+        private void CWOracleHooks_OnPearlIntro(SLOracleBehaviorHasMark.MoonConversation self, ref bool runOriginalCode)
+        {
+            ConversationUsesPearlIntro = true;
+
+            if (IsInGateConversationInit && !CurrentlyInitializingScanner.ChasingWindContactedBefore && !self.myBehavior.isRepeatedDiscussion)
+            {
+                self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Hello little one, this is Chasing Wind! I guess you would like to show me something?"), 10));
+                runOriginalCode = false;
+            }
+        }
         private void MoonConversation_PearlIntro(On.SLOracleBehaviorHasMark.MoonConversation.orig_PearlIntro orig, SLOracleBehaviorHasMark.MoonConversation self)
         {
             ConversationUsesPearlIntro = true;
@@ -436,12 +465,12 @@ namespace GateScanner
                 // Custom pearl introductions
                 if (self.myBehavior.oracle.ID == Oracle.OracleID.SL)
                 {
-                    if (!CurrentlyInitializingScanner.AnyScannerUsedBefore)
+                    if (!CurrentlyInitializingScanner.VanillaIteratorContactedBefore)
                     {
                         if (CurrentlyInitializingScanner.Gate.room.game.GetStorySession.characterStats.name == SlugcatStats.Name.Red)
                         {
                             self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Hello, <PLAYERNAME>! It's me, Looks to the Moon."), 10));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("It appears that the archive system is still mostly functional. I'm as surprised as you!"), 10));
+                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("It appears that the Archive System is still mostly functional. I'm as surprised as you!"), 10));
                             self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Would you like me to read this pearl?"), 10));
                         }
                         else
@@ -526,7 +555,7 @@ namespace GateScanner
                 }
                 else if (ModManager.MSC && self.myBehavior.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
                 {
-                    if (!CurrentlyInitializingScanner.AnyScannerUsedBefore)
+                    if (!CurrentlyInitializingScanner.VanillaIteratorContactedBefore)
                     {
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Oh, hello, <PLAYERNAME>! It's me, Looks to the Moon."), 10));
                         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Would you like me to read this pearl?"), 10));
@@ -686,6 +715,15 @@ namespace GateScanner
             self.myBehavior = actualMyBehavior;
         }
 
+        /// <summary>
+        /// Requires Chasing Wind to function.
+        /// </summary>
+        private void HookChasingWind()
+        {
+            // Chasing Wind has several events in its code, apparently just so that other modders can access it easily. Thanks M4rbleL1ne!
+            CWStuff.CWOracleHooks.OnPearlIntro += CWOracleHooks_OnPearlIntro;
+            CWStuff.CWPearlConversation.OnAddEvents += CWPearlConversation_OnAddEvents;
+        }
         private void RainWorld_OnModsInit(On.RainWorld.orig_OnModsInit orig, RainWorld self)
         {
             orig(self);
@@ -709,6 +747,7 @@ namespace GateScanner
             ChasingWindEnabled = ModManager.ActiveMods.Any(x => x.id == "myr.chasing_wind");
             if (ChasingWindEnabled)
             {
+                HookChasingWind();
                 Debug.Log("Gate Scanner detected Chasing Wind!");
             }
         }

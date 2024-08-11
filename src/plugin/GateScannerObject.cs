@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using MoreSlugcats;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace GateScanner
 {
@@ -58,13 +58,13 @@ namespace GateScanner
         /// </summary>
         public List<DataPearl> AlreadyScanned { get; }
         /// <summary>
-        /// The flag in the save file that determines the value of <see cref="AnyScannerUsedBefore"/>.
+        /// The flag in the save file that determines the value of <see cref="VanillaIteratorContactedBefore"/>.
         /// </summary>
         public const string GATESCANNER_USEDBEFORE_SAVE_STRING = "23848.gatescanner.USEDGATESCANNERBEFORE";
         /// <summary>
         /// Whether or not the player has ever successfully scanned a pearl.
         /// </summary>
-        public bool AnyScannerUsedBefore // I really hope this doesn't break anything!
+        public bool VanillaIteratorContactedBefore // I really hope this doesn't break anything!
         {
             get
             {
@@ -74,16 +74,47 @@ namespace GateScanner
             {
                 if (value)
                 {
-                    if (!AnyScannerUsedBefore)
+                    if (!VanillaIteratorContactedBefore)
                     {
                         Gate.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings.Add(GATESCANNER_USEDBEFORE_SAVE_STRING);
                     }
                 }
                 else
                 {
-                    if (AnyScannerUsedBefore)
+                    if (VanillaIteratorContactedBefore)
                     {
                         Gate.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings.Remove(GATESCANNER_USEDBEFORE_SAVE_STRING);
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// The flag in the save file that determines the value of <see cref="VanillaIteratorContactedBefore"/>.
+        /// </summary>
+        public const string GATESCANNER_CHASINGWINDUSEDBEFORE_SAVE_STRING = "23848.gatescanner.USEDGATESCANNERBEFOREWITHCHASINGWIND";
+        /// <summary>
+        /// Whether or not the player has ever successfully scanned a pearl.
+        /// </summary>
+        public bool ChasingWindContactedBefore // I really hope this doesn't break anything!
+        {
+            get
+            {
+                return Gate.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings.Contains(GATESCANNER_CHASINGWINDUSEDBEFORE_SAVE_STRING);
+            }
+            set
+            {
+                if (value)
+                {
+                    if (!ChasingWindContactedBefore)
+                    {
+                        Gate.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings.Add(GATESCANNER_CHASINGWINDUSEDBEFORE_SAVE_STRING);
+                    }
+                }
+                else
+                {
+                    if (ChasingWindContactedBefore)
+                    {
+                        Gate.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings.Remove(GATESCANNER_CHASINGWINDUSEDBEFORE_SAVE_STRING);
                     }
                 }
             }
@@ -180,8 +211,6 @@ namespace GateScanner
         /// </summary>
         public void StartChasingWindConversation()
         {
-            Debug.Log("Chasing Wind Conversation");
-
             // Make a fake Chasing Wind to do the talking
             SSOracleBehavior dummyOracleBehavior = GetUninit<SSOracleBehavior>();
             dummyOracleBehavior.oracle = GetUninit<Oracle>();
@@ -249,7 +278,7 @@ namespace GateScanner
                 HeldPearl.AbstractPearl.dataPearlType != DataPearl.AbstractDataPearl.DataPearlType.Misc2 &&
                 HeldPearl.AbstractPearl.dataPearlType != DataPearl.AbstractDataPearl.DataPearlType.PebblesPearl &&
                 !(ModManager.MSC && HeldPearl.AbstractPearl.dataPearlType == MoreSlugcatsEnums.DataPearlType.BroadcastMisc);
-            bool saintBleachedPearl = ModManager.MSC && Gate.room.world.game.GetStorySession.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Saint && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.RM && HeldPearl.AbstractPearl.dataPearlType != DataPearl.AbstractDataPearl.DataPearlType.LF_west;
+            bool saintBleachedPearl = ModManager.MSC && Gate.room.world.game.StoryCharacter == MoreSlugcatsEnums.SlugcatStatsName.Saint && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.RM && HeldPearl.AbstractPearl.dataPearlType != DataPearl.AbstractDataPearl.DataPearlType.LF_west;
 
             // Make a fake Looks to the Moon / Five Pebbles to do the talking
             SLOracleBehaviorHasMark dummyOracleBehavior = GetUninit<SLOracleBehaviorHasMark>();
@@ -258,7 +287,7 @@ namespace GateScanner
             dummyOracleBehavior.holdingObject = HeldPearl;
             dummyOracleBehavior.isRepeatedDiscussion = false;
 
-            SlugcatStats.Name slugcatName = Gate.room.game.GetStorySession.saveStateNumber;
+            SlugcatStats.Name slugcatName = Gate.room.game.StoryCharacter;
             if (ModManager.MSC && ThisIterator == DialogueType.SpearmasterLooksToTheMoon)
             {
                 dummyOracleBehavior.oracle.ID = MoreSlugcatsEnums.OracleID.DM;
@@ -298,7 +327,7 @@ namespace GateScanner
                 {
                     if (!dummyOracleBehavior.isRepeatedDiscussion && ModManager.MSC && HeldPearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.Spearmasterpearl)
                     {
-                        if (Gate.room.world.game.GetStorySession.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Saint)
+                        if (Gate.room.world.game.StoryCharacter == MoreSlugcatsEnums.SlugcatStatsName.Saint)
                         {
                             Gate.room.game.rainWorld.progression.miscProgressionData.SetFuturePearlDeciphered(HeldPearl.AbstractPearl.dataPearlType, false);
                         }
@@ -421,7 +450,7 @@ namespace GateScanner
         /// </summary>
         public bool ChasingWindAvailable(StoryGameSession session)
         {
-            return CWStuff.CWOracleHooks.WorldSaveData.TryGetValue(session.saveState.miscWorldSaveData, out CWStuff.CWOracleHooks.CWOracleWorldSaveData CWSaveData) && CWSaveData.NumberOfConversations > 0 && !(ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint);
+            return ((CWStuff.CWOracleHooks.WorldSaveData.TryGetValue(session.saveState.miscWorldSaveData, out CWStuff.CWOracleHooks.CWOracleWorldSaveData CWSaveData) && CWSaveData.NumberOfConversations > 0) || PluginOptions.UnlockChasingWind.Value) && !(ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint);
         }
         /// <summary>
         /// Determines which iterators can respond when a pearl is scanned.
@@ -431,9 +460,9 @@ namespace GateScanner
         {
             List<DialogueType> ret = new();
             StoryGameSession session = Gate.room.game.GetStorySession;
-            if (session.saveState.deathPersistentSaveData.theMark || (ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Saint)) // no one responds if you can't understand them
+            if (session.saveState.deathPersistentSaveData.theMark || (ModManager.MSC && session.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Saint)) // no one responds if you can't understand them
             {
-                if (ModManager.MSC && session.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel)
+                if (ModManager.MSC && session.saveStateNumber == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel)
                 {
                     ret.Add(DialogueType.NoSignificantHarrassment);
                 }
@@ -528,6 +557,40 @@ namespace GateScanner
             }
         }
 
+        /// <summary>
+        /// Determines whether or not Chasing Wind has unique dialogue for a pearl. Requires Chasing Wind to function.
+        /// </summary>
+        public bool ChasingWindHasDialogueForPearl(DataPearl pearl)
+        {
+            Conversation.ID id = Conversation.DataPearlToConversation(pearl.AbstractPearl.dataPearlType);
+            if (id == Conversation.ID.None)
+            {
+                return pearl.AbstractPearl.dataPearlType != MoreSlugcatsEnums.DataPearlType.Spearmasterpearl &&
+                       pearl.AbstractPearl.dataPearlType != DataPearl.AbstractDataPearl.DataPearlType.PebblesPearl &&
+                       pearl.AbstractPearl.dataPearlType != DataPearl.AbstractDataPearl.DataPearlType.Misc2;
+            }
+
+            string translatedPath = LocalizationTranslator.LangShort(RWCustom.Custom.rainWorld.inGameTranslator.currentLanguage);
+            string unTranslatedPath = LocalizationTranslator.LangShort(InGameTranslator.LanguageID.English);
+            string fileName;
+            if (Gate.room.game.StoryCharacter != null)
+            {
+                fileName = Path.DirectorySeparatorChar + "CW_" + Gate.room.game.StoryCharacter.value + "_" + id.value + ".txt"; // check for character-specific dialogue file
+                if (File.Exists(AssetManager.ResolveFilePath(CWStuff.CWStuffPlugin.CWTextPath + translatedPath + fileName)) ||
+                    File.Exists(AssetManager.ResolveFilePath(CWStuff.CWStuffPlugin.CWTextPath + unTranslatedPath + fileName)))
+                {
+                    return true;
+                }
+            }
+            fileName = Path.DirectorySeparatorChar + "CW_" + id.value + ".txt"; // check for general dialogue file
+            if (File.Exists(AssetManager.ResolveFilePath(CWStuff.CWStuffPlugin.CWTextPath + translatedPath + fileName)) ||
+                File.Exists(AssetManager.ResolveFilePath(CWStuff.CWStuffPlugin.CWTextPath + unTranslatedPath + fileName)))
+            {
+                return true;
+            }
+            return false;
+        }
+
         public void Update(bool eu)
         {
             if (Gate.room.game.session is not StoryGameSession)
@@ -613,10 +676,15 @@ namespace GateScanner
                                         previousIterators.Add((ThisIterator.Value, HeldPearl.AbstractPearl.ID));
                                     }
 
-                                    if (!AnyScannerUsedBefore)
+                                    if (!VanillaIteratorContactedBefore && (ThisIterator == DialogueType.LooksToTheMoon || ThisIterator == DialogueType.SpearmasterLooksToTheMoon || ThisIterator == DialogueType.FivePebbles))
                                     {
-                                        Debug.Log("First time using gate scanner!");
-                                        AnyScannerUsedBefore = true;
+                                        Debug.Log("First time using gate scanner with the vanilla iterator");
+                                        VanillaIteratorContactedBefore = true;
+                                    }
+                                    if (!ChasingWindContactedBefore && (ThisIterator == DialogueType.ChasingWind))
+                                    {
+                                        Debug.Log("First time using gate scanner with Chasing Wind");
+                                        ChasingWindContactedBefore = true;
                                     }
                                 }
                                 else
@@ -668,27 +736,38 @@ namespace GateScanner
                     {
                         HeldPearl = readablePearls[Random.Range(0, readablePearls.Count)];
                         HeldPearlSide = HeldPearl.firstChunk.pos.x > Gate.room.PixelWidth / 2;
-                        
+
+                        /* // quick and dirty method to find out which pearls Chasing Wind has dialogue for
+                        foreach (string id in ExtEnumBase.GetNames(typeof(DataPearl.AbstractDataPearl.DataPearlType)))
+                        {
+                            DataPearl p = GetUninit<DataPearl>();
+                            p.abstractPhysicalObject = GetUninit<DataPearl.AbstractDataPearl>();
+                            p.AbstractPearl.dataPearlType = (DataPearl.AbstractDataPearl.DataPearlType)ExtEnumBase.Parse(typeof(DataPearl.AbstractDataPearl.DataPearlType), id, false);
+                            Debug.Log("Chasing Wind had dialogue for " + id + " in the time of " + Gate.room.game.StoryCharacter + ": " + ChasingWindHasDialogueForPearl(p));
+                        }
+                        */
+
                         // determine which iterators can respond
                         List<DialogueType> availableIterators = GetAllAvailableIterators();
-                        for (int i = 0; i < availableIterators.Count; i++)
-                        {
-                            Debug.Log("Available: " + availableIterators[i]);
-                        }
+                        Debug.Log("Available: " + (availableIterators.Count > 0 ? string.Join(", ", availableIterators) : "None"));
 
                         // select an iterator to respond
                         if (availableIterators.Count > 0)
                         {
                             List<(DialogueType, EntityID)> previousIterators = Plugin.PreviousIteratorTable.GetValue(Gate.room.game, x => throw new System.Exception("The current game does not have a PreviousIteratorTable!"));
                             List<DialogueType> iteratorsNotResponded = availableIterators.Where(x => !previousIterators.Contains((x, HeldPearl.AbstractPearl.ID))).ToList();
+                            if (Plugin.ChasingWindEnabled && iteratorsNotResponded.Count > 1 && iteratorsNotResponded.Contains(DialogueType.ChasingWind) && !ChasingWindHasDialogueForPearl(HeldPearl)) // remove Chasing Wind from the pool if they don't have dialogue for a pearl
+                            {
+                                Debug.Log("De-prioritizing Chasing Wind as they don't have any dialogue for this pearl."); // if they do get selected, there's fallback dialogue
+                                iteratorsNotResponded.Remove(DialogueType.ChasingWind);
+                            }
                             ThisIterator = iteratorsNotResponded.Count > 0 ? iteratorsNotResponded[Random.Range(0, iteratorsNotResponded.Count)] : availableIterators[Random.Range(0, availableIterators.Count)]; // Pick a random iterator, but prioritize ones that have not yet read the pearl this cycle. It might be a better idea to check if they've read it at all...
                         }
                         else
                         {
                             ThisIterator = null;
                         }
-
-                        Debug.Log("Selected: " + ThisIterator);
+                        Debug.Log("Selected: " + (ThisIterator.HasValue ? ThisIterator.Value : "None"));
 
                         Step1TimeRequired = Random.Range(10, 30);
                         Step2TimeRequired = Random.Range(60, 120);
