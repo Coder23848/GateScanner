@@ -34,7 +34,7 @@ namespace GateScanner
             On.RainWorldGame.ctor += RainWorldGame_ctor;
         }
 
-        // TODO: Chasing Wind iterator pearl dialogue (after the in-person version is done), Chasing Wind Spearmaster pearl dialogue (only after the in-person version is done), ensure the slugcat looks at the scanner, Pearlcat Five Pebbles support, Pebbles Reads Pearls support, Hunter Expansion support, fix Hunter Expansion positioning bug (according to Steam comments), translation support?
+        // TODO: Chasing Wind iterator pearl dialogue (after the in-person version is done), Chasing Wind Spearmaster pearl dialogue (only after the in-person version is done), Pearlcat Five Pebbles support, Pebbles Reads Pearls support, Hunter Expansion support, fix Hunter Expansion positioning bug (according to Steam comments), translation support?
 
         /// <summary>
         /// Whether or not the Pearlcat mod is active.

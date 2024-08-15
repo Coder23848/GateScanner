@@ -119,38 +119,12 @@ namespace GateScanner
                 }
             }
         }
-        /// <summary>
-        /// The height (in the room) that the pearl is held at.
-        /// </summary>
-        public float PearlHoldHeight => 260;
+        
         /// <summary>
         /// The position of the <see cref="HeldPearl"/>.
         /// </summary>
-        public Vector2 PearlHoldPos => new(Gate.room.PixelWidth / 2 + (HeldPearlSide.Value ? 90 : -90), PearlHoldHeight);
-        /// <summary>
-        /// If true, the water level in the room is too high for the scanner to be functional.
-        /// </summary>
-        public bool ScannerUnderWater
-        {
-            get
-            {
-                if (Gate.room.waterObject != null)
-                {
-                    if (Gate.room.waterInverted)
-                    {
-                        return Gate.room.waterObject.fWaterLevel - 10 < PearlHoldHeight;
-                    }
-                    else
-                    {
-                        return Gate.room.waterObject.fWaterLevel + 10 > PearlHoldHeight;
-                    }
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
+        public Vector2 PearlHoldPos => new(Gate.karmaGlyphs[HeldPearlSide.Value ? 1 : 0].pos.x, PearlHoldHeight(HeldPearlSide.Value)); // The height is 260 in normal cases, but some mods change that.
+
         /// <summary>
         /// A multiplier for the volume of the scanner sound effects.
         /// </summary>
@@ -169,33 +143,82 @@ namespace GateScanner
             Speaker = null;
         }
 
-        public List<DataPearl> PearlsInGateRange()
+        /// <summary>
+        /// The height (in the room) that the pearl is held at.
+        /// </summary>
+        public float PearlHoldHeight(bool side)
+        {
+            return Gate.karmaGlyphs[side ? 1 : 0].pos.y - 30;
+        }
+
+        /// <summary>
+        /// If true, the water level in the room is too high for the scanner to be functional.
+        /// </summary>
+        public bool ScannerUnderWater()
+        {
+            if (Gate.room.waterObject != null)
+            {
+                if (Gate.room.waterInverted)
+                {
+                    return Gate.room.waterObject.fWaterLevel - 10 < Mathf.Max(PearlHoldHeight(false), PearlHoldHeight(true));
+                }
+                else
+                {
+                    return Gate.room.waterObject.fWaterLevel + 10 > Mathf.Min(PearlHoldHeight(false), PearlHoldHeight(true));
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        /// <summary>
+        /// Returns true if the given point is within the range at which the scanner detects pearls.
+        /// </summary>
+        /// <param name="point">The point to test.</param>
+        public bool PointInScanningRange(Vector2 point)
+        {
+            for (int i = 0; i < Gate.karmaGlyphs.Length; i++)
+            {
+                Vector2 glyphPos = Gate.karmaGlyphs[i].pos;
+                float minX = glyphPos.x - 80;
+                float maxX = glyphPos.x + 80;
+                float minY = glyphPos.y - 170;
+                float maxY = glyphPos.y + 90;
+
+                // visualization of the range for testing purposes
+                /*
+                Gate.room.AddObject(new DebugSprite(new(minX, minY), new("Futile_White"), Gate.room));
+                Gate.room.AddObject(new DebugSprite(new(minX, maxY), new("Futile_White"), Gate.room));
+                Gate.room.AddObject(new DebugSprite(new(maxX, minY), new("Futile_White"), Gate.room));
+                Gate.room.AddObject(new DebugSprite(new(maxX, maxY), new("Futile_White"), Gate.room));
+                */
+
+                if (
+                    point.x > minX &&
+                    point.x < maxX &&
+                    point.y > minY &&
+                    point.y < maxY
+                    )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        /// <summary>
+        /// Returns a list of all pearls in the scanner's range.
+        /// </summary>
+        public List<DataPearl> PearlsInScanningRange()
         {
             List<DataPearl> ret = new();
             foreach (List<PhysicalObject> list in Gate.room.physicalObjects)
             {
                 foreach (PhysicalObject obj in list)
                 {
-                    if (obj is DataPearl pearl)
+                    if (obj is DataPearl pearl && PointInScanningRange(pearl.firstChunk.pos))
                     {
-                        Vector2 position = pearl.firstChunk.pos;
-                        // This was copied from the code for detecting players in the gate. I can't be bothered to simplify it, and there is the possibility that the separate cases will become important later.
-                        if (position.x < Gate.room.PixelWidth / 2 - 160)
-                        {
-                            continue; // Left of gate
-                        }
-                        else if (position.x < Gate.room.PixelWidth / 2)
-                        {
-                            ret.Add(pearl); // Left side
-                        }
-                        else if (position.x < Gate.room.PixelWidth / 2 + 160)
-                        {
-                            ret.Add(pearl); // Right side
-                        }
-                        else
-                        {
-                            continue; // Right of gate
-                        }
+                        ret.Add(pearl);
                     }
                 }
             }
@@ -287,7 +310,6 @@ namespace GateScanner
             dummyOracleBehavior.holdingObject = HeldPearl;
             dummyOracleBehavior.isRepeatedDiscussion = false;
 
-            SlugcatStats.Name slugcatName = Gate.room.game.StoryCharacter;
             if (ModManager.MSC && ThisIterator == DialogueType.SpearmasterLooksToTheMoon)
             {
                 dummyOracleBehavior.oracle.ID = MoreSlugcatsEnums.OracleID.DM;
@@ -602,7 +624,7 @@ namespace GateScanner
                 Debug.Log("Pearl removed from room or deleted, scanner disabled");
                 DropHeldPearl();
             }
-            AlreadyScanned.RemoveAll(x => x.slatedForDeletetion || x.room == null || x.room.abstractRoom == null || x.room.abstractRoom.index != Gate.room.abstractRoom.index || x.firstChunk.pos.x < Gate.room.PixelWidth / 2 - 160 || x.firstChunk.pos.x >= Gate.room.PixelWidth / 2 + 160); // Pearls that have been removed from the gate may be scanned again
+            AlreadyScanned.RemoveAll(x => x.slatedForDeletetion || x.room == null || x.room.abstractRoom == null || x.room.abstractRoom.index != Gate.room.abstractRoom.index || !PointInScanningRange(x.firstChunk.pos)); // Pearls that have been removed from the gate may be scanned again
             // Turn off scanner if no one is around to listen
             if (HeldPearl != null && !PlayerInRoom())
             {
@@ -611,9 +633,9 @@ namespace GateScanner
                 DropHeldPearl();
             }
             // Turn scanner off if the room floods
-            if (HeldPearl != null && ScannerUnderWater)
+            if (HeldPearl != null && ScannerUnderWater())
             {
-                Debug.Log("Scanner submerged");
+                Debug.Log("Scanner submerged, scanner disabled");
                 DropHeldPearl();
             }
             // The gate is supposed to be suppressed while the scanner is active, but if it does somehow activate it should get priority.
@@ -729,23 +751,13 @@ namespace GateScanner
             {
                 Step1Timer = 0;
                 Step2Timer = 0;
-                if (!ScannerUnderWater && ErrorTimer == 0) // The gate symbols don't display properly underwater.
+                if (!ScannerUnderWater() && ErrorTimer == 0) // The gate symbols don't display properly underwater.
                 {
-                    List<DataPearl> readablePearls = PearlsInGateRange().Where(x => !PearlOwnedByCreature(x) && !x.slatedForDeletetion && x.room != null && x.room.abstractRoom.index == Gate.room.abstractRoom.index && !AlreadyScanned.Contains(x)).ToList();
+                    List<DataPearl> readablePearls = PearlsInScanningRange().Where(x => !PearlOwnedByCreature(x) && !x.slatedForDeletetion && x.room != null && x.room.abstractRoom.index == Gate.room.abstractRoom.index && !AlreadyScanned.Contains(x)).ToList();
                     if (readablePearls.Count > 0 && PlayerInRoom())
                     {
                         HeldPearl = readablePearls[Random.Range(0, readablePearls.Count)];
-                        HeldPearlSide = HeldPearl.firstChunk.pos.x > Gate.room.PixelWidth / 2;
-
-                        /* // quick and dirty method to find out which pearls Chasing Wind has dialogue for
-                        foreach (string id in ExtEnumBase.GetNames(typeof(DataPearl.AbstractDataPearl.DataPearlType)))
-                        {
-                            DataPearl p = GetUninit<DataPearl>();
-                            p.abstractPhysicalObject = GetUninit<DataPearl.AbstractDataPearl>();
-                            p.AbstractPearl.dataPearlType = (DataPearl.AbstractDataPearl.DataPearlType)ExtEnumBase.Parse(typeof(DataPearl.AbstractDataPearl.DataPearlType), id, false);
-                            Debug.Log("Chasing Wind had dialogue for " + id + " in the time of " + Gate.room.game.StoryCharacter + ": " + ChasingWindHasDialogueForPearl(p));
-                        }
-                        */
+                        HeldPearlSide = Mathf.Abs(HeldPearl.firstChunk.pos.x - Gate.karmaGlyphs[0].pos.x) > Mathf.Abs(HeldPearl.firstChunk.pos.x - Gate.karmaGlyphs[1].pos.x); // go to whichever sign is closest horizontally
 
                         // determine which iterators can respond
                         List<DialogueType> availableIterators = GetAllAvailableIterators();
