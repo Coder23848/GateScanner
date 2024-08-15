@@ -119,12 +119,17 @@ namespace GateScanner
                 }
             }
         }
-        
+
+        /// <summary>
+        /// The gate sign that is currently being used for scanning.
+        /// </summary>
+        public GateKarmaGlyph ActiveGlyph => Gate.karmaGlyphs[HeldPearlSide.Value ? 1 : 0];
+
         /// <summary>
         /// The position of the <see cref="HeldPearl"/>.
         /// </summary>
-        public Vector2 PearlHoldPos => new(Gate.karmaGlyphs[HeldPearlSide.Value ? 1 : 0].pos.x, PearlHoldHeight(HeldPearlSide.Value)); // The height is 260 in normal cases, but some mods change that.
-
+        public Vector2 PearlHoldPos => new(ActiveGlyph.pos.x, PearlHoldHeight(HeldPearlSide.Value)); // The height is 260 in normal cases, but some mods change that.
+        
         /// <summary>
         /// A multiplier for the volume of the scanner sound effects.
         /// </summary>
@@ -722,6 +727,7 @@ namespace GateScanner
                             else
                             {
                                 Speaker.Update();
+
                                 if (Speaker.events.Count == 0)
                                 {
                                     Debug.Log("Scan finished at " + Gate.room.abstractRoom.name);

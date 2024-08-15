@@ -31,6 +31,8 @@ namespace GateScanner
             On.SLOracleBehaviorHasMark.MoonConversation.PebblesPearl += MoonConversation_PebblesPearl;
             On.SLOracleBehaviorHasMark.MoonConversation.MiscPearl += MoonConversation_MiscPearl;
 
+            On.PlayerGraphics.PlayerObjectLooker.HowInterestingIsThisObject += PlayerObjectLooker_HowInterestingIsThisObject;
+
             On.RainWorldGame.ctor += RainWorldGame_ctor;
         }
 
@@ -713,6 +715,22 @@ namespace GateScanner
             }
             orig(self, miscPearl2);
             self.myBehavior = actualMyBehavior;
+        }
+
+        private float PlayerObjectLooker_HowInterestingIsThisObject(On.PlayerGraphics.PlayerObjectLooker.orig_HowInterestingIsThisObject orig, PlayerGraphics.PlayerObjectLooker self, PhysicalObject obj)
+        {
+            if (self.owner.player.room != null && self.owner.player.room.regionGate != null)
+            {
+                GateScannerObject thisScanner = gateScannerTable.GetValue(self.owner.player.room.regionGate, x => throw new System.Exception("Gate " + self.owner.player.room.abstractRoom.name + " does not have a scanner for some reason."));
+                if (obj == thisScanner.HeldPearl && thisScanner.Step1Timer > 0)
+                {
+                    float newValue = (thisScanner.Speaker == null) ? 20f : 500f;
+                    // apply the same distance falloff that the function usually uses
+                    newValue /= Mathf.Lerp(Mathf.Pow(Vector2.Distance(self.owner.player.mainBodyChunk.pos, obj.bodyChunks[0].pos), 1.5f), 1f, 0.995f);
+                    return newValue;
+                }
+            }
+            return orig(self, obj);
         }
 
         /// <summary>
