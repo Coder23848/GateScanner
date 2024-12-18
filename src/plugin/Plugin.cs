@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using BepInEx;
@@ -64,14 +65,64 @@ namespace GateScanner
 
         // Gate handling
         static readonly ConditionalWeakTable<RegionGate, GateScannerObject> gateScannerTable = new();
+        public bool GetGateScannerObject(RegionGate regionGate, out GateScannerObject scanner)
+        {
+            return gateScannerTable.TryGetValue(regionGate, out scanner);
+        }
+        public bool GetGateScannerSignData(GateKarmaGlyph self, out GateScannerSignData signData)
+        {
+            return gateScannerSignTable.TryGetValue(self, out signData);
+        }
+
+        public GateScannerSettings GetGateScannerSettingsFromFile(AbstractRoom room)
+        {
+            // default if file is not found
+            GateScannerSettings settings = new();
+
+            // find file
+            string file = WorldLoader.FindRoomFile(room.name, includeRootDirectory: false, "_gatescannersettings.txt");
+            if (File.Exists(file))
+            {
+                string[] lines = File.ReadAllLines(file);
+                foreach (string line in lines)
+                {
+                    if (line == "NOSCANNER")
+                    {
+                        settings.NoScanner = true;
+                    }
+                    else if (line == "BROKENTRANSMITTER")
+                    {
+                        settings.BrokenTransmitter = true;
+                    }
+                }
+            }
+
+            return settings;
+        }
+
+        static bool initScanner = false;
+
         private void RegionGate_ctor(On.RegionGate.orig_ctor orig, RegionGate self, Room room)
         {
+            GateScannerSettings scannerSettings = GetGateScannerSettingsFromFile(room.abstractRoom);
+
+            initScanner = !scannerSettings.NoScanner;
+
             orig(self, room);
-            gateScannerTable.Add(self, new(self));
+
+            initScanner = false;
+            if (!scannerSettings.NoScanner)
+            {
+                gateScannerTable.Add(self, new(self, scannerSettings.BrokenTransmitter));
+            }
         }
         private void RegionGate_Update(On.RegionGate.orig_Update orig, RegionGate self, bool eu)
         {
-            GateScannerObject thisScanner = gateScannerTable.GetValue(self, x => throw new System.Exception("Gate " + self.room.abstractRoom.name + " does not have a scanner for some reason."));
+            if (!GetGateScannerObject(self, out GateScannerObject thisScanner))
+            {
+                orig(self, eu);
+                return;
+            }
             thisScanner.Update(eu);
             orig(self, eu);
 
@@ -82,12 +133,10 @@ namespace GateScanner
         }
         private void ElectricGate_Update(On.ElectricGate.orig_Update orig, ElectricGate self, bool eu)
         {
-            GateScannerObject thisScanner = gateScannerTable.GetValue(self, x => throw new System.Exception("Gate " + self.room.abstractRoom.name + " does not have a scanner for some reason."));
-
             orig(self, eu);
 
             // Turn off gate lamps on scanning side
-            if (thisScanner.HeldPearl != null)
+            if (GetGateScannerObject(self, out GateScannerObject thisScanner) && thisScanner.HeldPearl != null)
             {
                 self.lampsOn[thisScanner.HeldPearlSide.Value ? 0 : 1] = false;
                 self.lampsOn[thisScanner.HeldPearlSide.Value ? 3 : 2] = false;
@@ -99,14 +148,23 @@ namespace GateScanner
         private void GateKarmaGlyph_ctor(On.GateKarmaGlyph.orig_ctor orig, GateKarmaGlyph self, bool side, RegionGate gate, RegionGate.GateRequirement requirement)
         {
             orig(self, side, gate, requirement);
-            gateScannerSignTable.Add(self, new());
+
+            if (initScanner)
+            {
+                gateScannerSignTable.Add(self, new());
+            }
         }
         private void GateKarmaGlyph_Update(On.GateKarmaGlyph.orig_Update orig, GateKarmaGlyph self, bool eu)
         {
-            GateScannerObject thisScanner = gateScannerTable.GetValue(self.gate, x => throw new System.Exception("Gate " + self.room.abstractRoom.name + " does not have a scanner for some reason."));
-            GateScannerSignData thisData = gateScannerSignTable.GetValue(self, x => throw new System.Exception("Unable to load data for gate sign " + self.ToString()));
+            //GateScannerObject thisScanner = gateScannerTable.GetValue(self.gate, x => throw new System.Exception("Gate " + self.room.abstractRoom.name + " does not have a scanner for some reason."));
+            //GateScannerSignData thisData = gateScannerSignTable.GetValue(self, x => throw new System.Exception("Unable to load data for gate sign " + self.ToString()));
 
             orig(self, eu);
+
+            if (!GetGateScannerObject(self.gate, out GateScannerObject thisScanner) || !GetGateScannerSignData(self, out GateScannerSignData thisData))
+            {
+                return;
+            }
 
             // Check for scan stops and starts
             if (thisScanner.HeldPearl != null && thisScanner.HeldPearlSide == self.side && !thisData.InScanMode)
@@ -263,10 +321,15 @@ namespace GateScanner
         }
         private void GateKarmaGlyph_DrawSprites(On.GateKarmaGlyph.orig_DrawSprites orig, GateKarmaGlyph self, RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos)
         {
-            GateScannerObject thisScanner = gateScannerTable.GetValue(self.gate, x => throw new System.Exception("Gate " + self.room.abstractRoom.name + " does not have a scanner for some reason."));
-            GateScannerSignData thisData = gateScannerSignTable.GetValue(self, x => throw new System.Exception("Unable to load data for gate sign " + self.ToString()));
+            //GateScannerObject thisScanner = gateScannerTable.GetValue(self.gate, x => throw new System.Exception("Gate " + self.room.abstractRoom.name + " does not have a scanner for some reason."));
+            //GateScannerSignData thisData = gateScannerSignTable.GetValue(self, x => throw new System.Exception("Unable to load data for gate sign " + self.ToString()));
 
             orig(self, sLeaser, rCam, timeStacker, camPos);
+
+            if (!GetGateScannerObject(self.gate, out GateScannerObject thisScanner) || !GetGateScannerSignData(self, out GateScannerSignData thisData))
+            {
+                return;
+            }
 
             if (thisData.InScanMode)
             {
@@ -349,9 +412,9 @@ namespace GateScanner
         }
         private int GateKarmaGlyph_ShouldPlayCitizensIDAnimation(On.GateKarmaGlyph.orig_ShouldPlayCitizensIDAnimation orig, GateKarmaGlyph self)
         {
-            GateScannerSignData thisData = gateScannerSignTable.GetValue(self, x => throw new System.Exception("Unable to load data for gate sign " + self.ToString()));
+            //GateScannerSignData thisData = gateScannerSignTable.GetValue(self, x => throw new System.Exception("Unable to load data for gate sign " + self.ToString()));
 
-            return thisData.InScanMode ? 0 : orig(self); // Disable City gate mechanisms while scanning
+            return (GetGateScannerSignData(self, out GateScannerSignData thisData) && thisData.InScanMode) ? 0 : orig(self); // Disable City gate mechanisms while scanning
         }
 
         // Custom dialogue
@@ -719,9 +782,9 @@ namespace GateScanner
 
         private float PlayerObjectLooker_HowInterestingIsThisObject(On.PlayerGraphics.PlayerObjectLooker.orig_HowInterestingIsThisObject orig, PlayerGraphics.PlayerObjectLooker self, PhysicalObject obj)
         {
-            if (self.owner.player.room != null && self.owner.player.room.regionGate != null)
+            if (self.owner.player.room != null && self.owner.player.room.regionGate != null && GetGateScannerObject(self.owner.player.room.regionGate, out GateScannerObject thisScanner))
             {
-                GateScannerObject thisScanner = gateScannerTable.GetValue(self.owner.player.room.regionGate, x => throw new System.Exception("Gate " + self.owner.player.room.abstractRoom.name + " does not have a scanner for some reason."));
+                //GateScannerObject thisScanner = gateScannerTable.GetValue(self.owner.player.room.regionGate, x => throw new System.Exception("Gate " + self.owner.player.room.abstractRoom.name + " does not have a scanner for some reason."));
                 if (obj == thisScanner.HeldPearl && thisScanner.Step1Timer > 0)
                 {
                     float newValue = (thisScanner.Speaker == null) ? 20f : 500f;
@@ -733,6 +796,14 @@ namespace GateScanner
             return orig(self, obj);
         }
 
+        /// <summary>
+        /// Loads the Pearlcat library in advance so the game doesn't freeze later. Requires Pearlcat to function.
+        /// </summary>
+        private void LoadPearlcat()
+        {
+            // This is a very strange solution to an equally strange bug. Even when pearlcat isn't installed, something in (presumably) the library loading process causes a half-second freeze the first time the runtime thinks the pearlcat library might get referenced. By "possibly" calling this function in OnModsInit, we ensure that this freeze happens when loading the game rather than mid-cycle.
+            var pearlCatHooks = typeof(Pearlcat.Hooks);
+        }
         /// <summary>
         /// Requires Chasing Wind to function.
         /// </summary>
@@ -760,6 +831,7 @@ namespace GateScanner
             PearlcatEnabled = ModManager.ActiveMods.Any(x => x.id == "pearlcat");
             if (PearlcatEnabled)
             {
+                LoadPearlcat();
                 Debug.Log("Gate Scanner detected Pearlcat!");
             }
             ChasingWindEnabled = ModManager.ActiveMods.Any(x => x.id == "myr.chasing_wind");

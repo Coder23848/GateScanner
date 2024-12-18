@@ -57,6 +57,7 @@ namespace GateScanner
         /// A list of pearls that do not trigger the scanner.
         /// </summary>
         public List<DataPearl> AlreadyScanned { get; }
+        public bool BrokenTransmitter { get; set; }
         /// <summary>
         /// The flag in the save file that determines the value of <see cref="VanillaIteratorContactedBefore"/>.
         /// </summary>
@@ -135,7 +136,7 @@ namespace GateScanner
         /// </summary>
         public const float BEEPVOLUME = 1.5f;
 
-        public GateScannerObject(RegionGate gate)
+        public GateScannerObject(RegionGate gate, bool brokenTransmitter = false)
         {
             Gate = gate;
             AlreadyScanned = new();
@@ -146,6 +147,7 @@ namespace GateScanner
             ErrorTimer = 0;
             ThisIterator = null;
             Speaker = null;
+            BrokenTransmitter = brokenTransmitter;
         }
 
         /// <summary>
@@ -469,7 +471,35 @@ namespace GateScanner
         {
             return !session.saveState.deathPersistentSaveData.ripMoon &&
                    session.saveState.miscWorldSaveData.SLOracleState.neuronsLeft > 0 &&
-                   (PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0 && session.saveState.miscWorldSaveData.SLOracleState.SpeakingTerms));
+                   (PluginOptions.UnlockScannerCheat.Value || (
+                        (session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0 || session.game.rainWorld.ExpeditionMode) && 
+                        session.saveState.miscWorldSaveData.SLOracleState.SpeakingTerms
+                   ));
+        }
+        /// <summary>
+        /// Determines hether or not Five Pebbles is available for pearl-reading in the current session.
+        /// </summary>
+        /// <param name="session">The session to check.</param>
+        /// <returns>Whether or not Five Pebbles is available for pearl-reading in the current session. Returns <see cref="false"/> if Five Pebbles is unaware of the player or unwilling to respond.</returns>
+        public bool FivePebblesAvailable(StoryGameSession session)
+        {
+            return PluginOptions.UnlockScannerCheat.Value || (
+                        (session.saveState.miscWorldSaveData.SSaiConversationsHad > 0 && session.saveState.hasRobo) || 
+                        session.game.rainWorld.ExpeditionMode
+                   );
+        }
+        /// <summary>
+        /// Determines hether or not pre-collapse Looks to the Moon is available for pearl-reading in the current session.
+        /// </summary>
+        /// <param name="session">The session to check.</param>
+        /// <returns>Whether or not pre-collapse Looks to the Moon is available for pearl-reading in the current session. Returns <see cref="false"/> if Looks to the Moon is unaware of the player.</returns>
+        public bool PreCollapseLooksToTheMoonAvailable(StoryGameSession session)
+        {
+            return PluginOptions.UnlockScannerCheat.Value || (
+                        session.saveState.miscWorldSaveData.SLOracleState.playerEncounters > 0 || // Expedition mode save files have playerEncounters set and not playerEncountersWithMark.
+                        session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0 || 
+                        session.game.rainWorld.ExpeditionMode
+                   );
         }
 
         /// <summary>
@@ -493,23 +523,28 @@ namespace GateScanner
                 {
                     ret.Add(DialogueType.NoSignificantHarrassment);
                 }
-                else
+                else if (!BrokenTransmitter)
                 {
-                    if (ModManager.MSC &&
-                        UsesPreCollapseLooksToTheMoon(session.saveStateNumber) &&
-                        (PluginOptions.UnlockScannerCheat.Value || session.saveState.miscWorldSaveData.SLOracleState.playerEncounters > 0 || session.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0)) // Expedition Mode sets playerEncountersWithMark only, the first visit to Looks to the Moon sets playerEncounters only.
+                    if (ModManager.MSC && UsesPreCollapseLooksToTheMoon(session.saveStateNumber))
                     {
-                        ret.Add(DialogueType.SpearmasterLooksToTheMoon);
+                        if (PreCollapseLooksToTheMoonAvailable(session))
+                        {
+                            ret.Add(DialogueType.SpearmasterLooksToTheMoon);
+                        }
                     }
-                    else if (ModManager.MSC &&
-                             UsesFivePebbles(session.saveStateNumber) &&
-                             (PluginOptions.UnlockScannerCheat.Value || (session.saveState.miscWorldSaveData.SSaiConversationsHad > 0 && session.saveState.hasRobo)))
+                    else if (ModManager.MSC && UsesFivePebbles(session.saveStateNumber))
                     {
-                        ret.Add(DialogueType.FivePebbles);
+                        if (FivePebblesAvailable(session))
+                        {
+                            ret.Add(DialogueType.FivePebbles);
+                        }
                     }
-                    else if (LooksToTheMoonAvailable(session))
+                    else
                     {
-                        ret.Add(DialogueType.LooksToTheMoon);
+                        if (LooksToTheMoonAvailable(session))
+                        {
+                            ret.Add(DialogueType.LooksToTheMoon);
+                        }
                     }
                     if (Plugin.ChasingWindEnabled)
                     {
@@ -759,16 +794,23 @@ namespace GateScanner
                 Step2Timer = 0;
                 if (!ScannerUnderWater() && ErrorTimer == 0) // The gate symbols don't display properly underwater.
                 {
-                    List<DataPearl> readablePearls = PearlsInScanningRange().Where(x => !PearlOwnedByCreature(x) && !x.slatedForDeletetion && x.room != null && x.room.abstractRoom.index == Gate.room.abstractRoom.index && !AlreadyScanned.Contains(x)).ToList();
+                    List<DataPearl> readablePearls = PearlsInScanningRange();
+                    readablePearls.RemoveAll(x => 
+                        PearlOwnedByCreature(x) || // pearl is held by a creature
+                        x.slatedForDeletetion || // pearl is being destroyed anyways
+                        x.room == null || // pearl's room is null
+                        x.room.abstractRoom.index != Gate.room.abstractRoom.index || // pearl is in a different room
+                        AlreadyScanned.Contains(x) // pearl has just been scanned
+                    );
                     if (readablePearls.Count > 0 && PlayerInRoom())
                     {
                         HeldPearl = readablePearls[Random.Range(0, readablePearls.Count)];
                         HeldPearlSide = Mathf.Abs(HeldPearl.firstChunk.pos.x - Gate.karmaGlyphs[0].pos.x) > Mathf.Abs(HeldPearl.firstChunk.pos.x - Gate.karmaGlyphs[1].pos.x); // go to whichever sign is closest horizontally
-
+                        
                         // determine which iterators can respond
                         List<DialogueType> availableIterators = GetAllAvailableIterators();
                         Debug.Log("Available: " + (availableIterators.Count > 0 ? string.Join(", ", availableIterators) : "None"));
-
+                        
                         // select an iterator to respond
                         if (availableIterators.Count > 0)
                         {
