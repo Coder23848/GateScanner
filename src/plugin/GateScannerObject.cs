@@ -442,7 +442,28 @@ namespace GateScanner
         /// <returns>Whether or not the given slugcat uses Pre-Collapse Looks to the Moon to read pearls.</returns>
         public static bool UsesPreCollapseLooksToTheMoon(SlugcatStats.Name name)
         {
-            return name == MoreSlugcatsEnums.SlugcatStatsName.Spear || name.value == "vinki";
+            if (!ModManager.MSC)
+            {
+                return false;
+            }
+            SlugcatStats.Name[] timeline = SlugcatStats.SlugcatTimelineOrder().ToArray();
+            for (int i = 0; i < timeline.Length; i++)
+            {
+                // any modded campaign before the Artificer's counts
+                if (timeline[i] == MoreSlugcatsEnums.SlugcatStatsName.Artificer)
+                {
+                    Debug.Log("Campaign >= Artificer");
+                    return false;
+                }
+                else if (timeline[i] == name)
+                {
+                    Debug.Log("Campaign < Artificer");
+                    return true;
+                }
+            }
+
+            Debug.Log("Campaign not found");
+            return false; // Campaign isn't in the timeline?
         }
         /// <summary>
         /// Checks whether or not a given slugcat uses Five Pebbles to read pearls normally.
