@@ -10,6 +10,7 @@ using static GateScanner.GateScannerObject;
 namespace GateScanner
 {
     [BepInPlugin("com.coder23848.gatescanner", PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+    [BepInDependency("lb-fgf-m4r-ik.chatoyant-waterfalls-but-real", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
 #pragma warning disable IDE0051 // Visual Studio is whiny
@@ -660,6 +661,14 @@ namespace GateScanner
                                 break;
                         }
                     }
+                }
+                else if (self.myBehavior.oracle.ID.value == "CW")
+                {
+                    orig(self); // will be caught by CWOracleHooks_OnPearlIntro
+                }
+                else
+                {
+                    Debug.Log("Unrecognized iterator ID \"" + self.myBehavior.oracle.ID.value + "\". This shouldn't happen!");
                 }
             }
             else

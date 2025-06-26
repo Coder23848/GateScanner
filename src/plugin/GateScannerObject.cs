@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using MoreSlugcats;
 using UnityEngine;
+using Watcher;
 
 namespace GateScanner
 {
@@ -405,7 +406,7 @@ namespace GateScanner
             {
                 if (ModManager.MSC && Gate.room.game.GetStorySession.characterStats.name == MoreSlugcatsEnums.SlugcatStatsName.Sofanthiel && Step1Timer > 0)
                 {
-                    AbstractPhysicalObject abstractPhysicalObject = new(Gate.room.world, MoreSlugcatsEnums.AbstractObjectType.SingularityBomb, null, Gate.room.GetWorldCoordinate(PearlHoldPos), Gate.room.world.game.GetNewID());
+                    AbstractPhysicalObject abstractPhysicalObject = new(Gate.room.world, DLCSharedEnums.AbstractObjectType.SingularityBomb, null, Gate.room.GetWorldCoordinate(PearlHoldPos), Gate.room.world.game.GetNewID());
                     Gate.room.abstractRoom.AddEntity(abstractPhysicalObject);
                     abstractPhysicalObject.RealizeInRoom();
                     SingularityBomb bomb = abstractPhysicalObject.realizedObject as SingularityBomb;
@@ -446,16 +447,16 @@ namespace GateScanner
             {
                 return false;
             }
-            SlugcatStats.Name[] timeline = SlugcatStats.SlugcatTimelineOrder().ToArray();
+            SlugcatStats.Timeline[] timeline = SlugcatStats.SlugcatTimelineOrder().ToArray();
             for (int i = 0; i < timeline.Length; i++)
             {
                 // any modded campaign before the Artificer's counts
-                if (timeline[i] == MoreSlugcatsEnums.SlugcatStatsName.Artificer)
+                if (timeline[i] == SlugcatStats.Timeline.Artificer)
                 {
                     Debug.Log("Campaign >= Artificer");
                     return false;
                 }
-                else if (timeline[i] == name)
+                else if (timeline[i] == SlugcatStats.SlugcatToTimeline(name))
                 {
                     Debug.Log("Campaign < Artificer");
                     return true;
@@ -463,7 +464,7 @@ namespace GateScanner
             }
 
             Debug.Log("Campaign not found");
-            return false; // Campaign isn't in the timeline?
+            return false; // Campaign isn't in the timeline
         }
         /// <summary>
         /// Checks whether or not a given slugcat uses Five Pebbles to read pearls normally.
@@ -544,7 +545,7 @@ namespace GateScanner
                 {
                     ret.Add(DialogueType.NoSignificantHarrassment);
                 }
-                else if (!BrokenTransmitter)
+                else if (!(BrokenTransmitter || (ModManager.Watcher && session.saveStateNumber == WatcherEnums.SlugcatStatsName.Watcher)))
                 {
                     if (ModManager.MSC && UsesPreCollapseLooksToTheMoon(session.saveStateNumber))
                     {

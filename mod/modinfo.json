@@ -7,7 +7,7 @@
 	"description": "Allows pearls to be read remotely at gates.",
 	"requirements": [],
 	"requirements_names": [],
-	"tags": [ "Game Mechanics" ],
+	"tags": [ "Game Mechanics", "Base", "Downpour", "Watcher" ],
 	"checksum_override_version": false,
 	"priorities": []
 }

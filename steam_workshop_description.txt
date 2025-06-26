@@ -2,4 +2,4 @@ Allows pearls to be read remotely at gates.
 
 Partially supports Pearlcat and the Vinki, but untested with other modded slugcats. If you find any bugs or incompatibilities, please tell me!
 
-Works with both v1.9.07b and v1.9.15.
+Works with v1.9.07b, v1.9.15, and v1.10.4.
